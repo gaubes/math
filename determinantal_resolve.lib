@@ -1,0 +1,495 @@
+version=" "; // $Id$
+category=" ";
+info="
+LIBRARY:  determiantal_resolve.lib 
+AUTHOR:  Sabrina Alexandra Gaube, sabrina.gaube@uol.de
+
+PROCEDURES:
+	blowUp3(J, C, #); same like blowUp2 but with the subcall blowUpBO(BO,C,2) instead of blowUpBO(BO,C,1);
+	generic_resolve(m, n, #); main method for resolution of generic mxn matrices
+	skewsymmetric_resolve(m); main method for resolution of generic skewsymmetric mxm matrices
+	
+	CopyDataInNextChartsAndBlowUp(M, Center, chartnumber); blow up method which copies data in the successor charts
+	generic_gauss(N, number_rows, number_cols); calculates the gaussian steps for the generic case
+	skewsymmetric_gauss(N, number_rows, number_cols); gaussian steps for the skewsymmetric case //TODO
+	
+	generic_transformation_of_variables(M); transformation of variables for the generic case
+	skewsymmetric_transformation_of_variables(M); transformation of variables for the skewsymmetric case
+	
+";
+
+LIB "matrix.lib";
+LIB "resolve.lib";
+
+
+proc blowUp3(ideal J,ideal C,list #)
+"USAGE:  blowUp3(J,C[,W][,E]);
+         W,J,C = ideals,
+         E     = list
+ASSUME:  J  = ideal containing W ( W = 0 if not specified)
+@*       C  = ideal containing J
+@*       E  = list of smooth hypersurfaces (e.g. exceptional divisors)
+NOTE:    W the ideal of the ambient space, C the ideal of the center of
+         the blowup and J the ideal of the variety
+         Important difference to blowUp2:
+         - the ambient space V(W) is blown up and V(J) transformed in it
+@*         - V(C) is assumed to be non-singular
+COMPUTE: the blowing up of W in C, the exceptional locus, the strict
+         transform of J and the blowup map
+RETURN:  list, say l, of size at most size(C),
+
+         l[i] is the affine ring corresponding to the i-th chart
+         each l[i] contains the ideals
+         - aS, ideal of the blownup ambient space
+         - sT, ideal of the strict transform
+         - eD, ideal of the exceptional divisor
+         - bM, ideal corresponding to the blowup map
+
+         l[i] also contains a list BO, which can best be viewed with showBO(BO)
+         detailed information on the data type BO can be viewed via the
+         command showDataTypes();
+EXAMPLE: example blowUp;  shows an example
+"
+{
+  def S=basering;
+  ideal W;
+  list E;
+  ideal abb=maxideal(1);
+  intvec v;
+  intvec bvec;
+  intvec w=-1;
+  matrix intE;
+  if(size(#)>0)
+  {
+    if(typeof(#[1])=="ideal")
+    {
+      W=#[1];
+    }
+    if(typeof(#[1])=="list")
+    {
+      E=#[1];
+    }
+    if(size(#)>1)
+    {
+      if((typeof(#[2])=="list") && (size(E)==0))
+      {
+        E=#[2];
+      }
+      if((typeof(#[2])=="ideal") && (size(W)==0))
+      {
+        W=#[2];
+      }
+    }
+  }
+  list BO=W,J,bvec,E,abb,v,w,intE;
+  int locaT;
+  export locaT;
+  list blow=blowUpBO(BO,C,2);
+  kill locaT;
+  int i;
+  for(i=1;i<=size(blow);i++)
+  {
+     def Q=blow[i];
+     setring Q;
+     ideal aS=BO[1];
+     ideal sT=BO[2];
+     ideal eD=BO[4][size(BO[4])];
+     ideal bM=BO[5];
+     kill lastMap;
+     kill thisChart;
+     export(aS);
+     export(sT);
+     export(eD);
+     export(bM);
+     blow[i]=Q;
+     setring S;
+     kill Q;
+  }
+  return(blow);
+}
+example
+{"EXAMPLE:";
+   echo = 2;
+   ring R=0,(x,y),dp;
+   ideal J=x2-y3;
+   ideal C=x,y;
+   list blow=blowUp3(J,C);
+   def Q=blow[1];
+   setring Q;
+   aS;
+   sT;
+   eD;
+   bM;
+}
+
+
+proc generic_resolve(int m, int n, list #)
+"USAGE:generic_resolve(int m, int n [, int r] ); computes the resolution of the ideal of r-minors of a generic mxn matrix
+RETURN: list of rings which represent the charts during the whole resolution process
+EXAMPLE: example generic_resolve; shows an example
+"
+{							//generic matrix with m rows and n columns
+	ring r = 0,(x(1..m*n)),dp;
+	
+	matrix M = genericmat(m,n);
+	list minorsize = list(min(ncols(M),nrows(M)),var(1) );							// default: resolve maximal minors; variable and list is only technically in order that we can store the list in the ring!!!
+	ideal minorideal = minor(M,1);
+	if(size(#)>0){
+		if(typeof(#[1])=="int"){
+			minorsize[1] = #[1];									//calculate how long we have to blow up until the #[1]-minors are resolved
+			minorideal = minor(M,#[1]);
+		}
+	}
+	export(minorsize);
+
+	export(minorideal);
+	
+	module path = [0,-1];										//path of the current chart, autoconverted to matrix
+	export(path);
+	
+	list BlowUpTree;
+	BlowUpTree[1] = basering;
+	BlowUpTree = BlowUpTree +  CopyDataInNextChartsAndBlowUp(M,minor(M,1),1);
+	int i; int j; int k;
+	
+	
+	int centersize = size(BlowUpTree);
+	int number_cols, number_rows;
+	int mindim;
+	int chart_counter = size(BlowUpTree);
+	
+	int oldsize;
+	for(i = 2; i<= size(BlowUpTree);i++){			
+		if(defined(XijChart)){
+			kill(XijChart);
+		}
+		def XijChart = BlowUpTree[i];
+		setring(XijChart);
+
+		number_cols = ncols(N);
+		number_rows = nrows(N);
+		matrix M = generic_gauss(Ntmp, number_rows,number_cols); // Reduction in Dimension
+		list transformationlist = generic_transformation_of_variables(M);			//Transformation for the new system of parameters
+		M = transformationlist[1];
+		ideal minorideal = transformationlist[2];
+		export(minorideal); 
+
+		mindim = min(ncols(M),nrows(M));
+		if(minorsize[1] > 1){		
+			oldsize = size(BlowUpTree);
+			BlowUpTree = BlowUpTree + CopyDataInNextChartsAndBlowUp(M,minor(M,1),i);
+			chart_counter = chart_counter + size(BlowUpTree) - oldsize;
+		}
+	}
+	return(BlowUpTree,chart_counter);
+}
+example{ 	
+	generic_resolve(4,3,2);
+}
+
+
+proc skewsymmetric_resolve(int m)
+"USAGE:skewsymmetric_resolve(int m [, int r] ); computes the resolution of the ideal of r-minors of a generic skewsymmetric mxm matrix
+RETURN: list of rings which represent the charts during the whole resolution process
+EXAMPLE: example skewsymmetric_resolve; shows an example
+"
+{
+	int i; int j; int k;
+	int number_cols,number_rows;
+	ring r = 0,(x(1..m*(m-1)div 2)),dp;
+	
+	
+	matrix M = skewmat(m);
+	module path = [0,-1];										//path of the current chart, autoconverted to matrix
+	export(path);
+	
+	list minorsize = list(m,var(1) );
+	export(minorsize);	
+	
+	list BlowUpTree;
+	BlowUpTree[1] = basering;
+	BlowUpTree = BlowUpTree +  CopyDataInNextChartsAndBlowUp(M,std(minor(M,1)),1);
+	
+	
+	
+	for(i = 2; i<= size(BlowUpTree);i++){			
+		if(defined(XijChart)){
+			kill(XijChart);
+		}
+		def XijChart = BlowUpTree[i];
+		setring(XijChart);
+
+		number_cols = ncols(N);
+		number_rows = nrows(N);
+		//print(N);
+		matrix M = skewsymmetric_gauss(Ntmp, number_rows,number_cols); 		// Reduction in Dimension
+		list transformationlist = skewsymmetric_transformation_of_variables(M);			//Transformation for the new system of parameters
+		M = transformationlist[1];
+		//print(M);
+		ideal minorideal = transformationlist[2];
+		export(minorideal); 
+	}
+	//TODO more than one blow up!!! see generic_resolve();
+	return(BlowUpTree);
+}example{
+	skewsymmetric_resolve(4);
+}
+
+
+
+
+
+proc CopyDataInNextChartsAndBlowUp(matrix M, ideal Center, int chartnumber)
+"USAGE: CopyDataInNextChartAndBlowUp(matrix M, ideal Center, int chartnumber ); computes the blow up and copies the data (strict transform, ideal and pathmatrix) in the successorcharts
+RETURN: list of rings which represent the charts during the whole resolution process
+EXAMPLE: example CopyDataInNextChartAndBlowUp; shows an example
+"
+{
+	int j, number_cols,number_rows;
+	def r = basering;
+	
+	list successorList = blowUp3(ideal(0),Center);
+	int number_center_components = size(successorList);
+
+	for(j = 1;j<=number_center_components; j++){
+		if(defined(newring)){kill newring;}
+		
+		def newring = successorList[j];
+		setring(newring);
+		map BlowUpMap = r,bM;					
+		matrix N = BlowUpMap(M);				// total transform
+		export(N);
+		matrix Ntmp = sat(N+sT,eD[1])[1];		// Achtung !!! Reihenfolge der Einträge und Dimension der neuen Matrix!!!
+		export(Ntmp);
+		print(Ntmp);
+		number_cols = ncols(N);
+		number_rows = nrows(N);
+		
+		def path = imap(r,path);				//init pathmatrix 
+		path=path,[chartnumber,j];
+		export(path);
+		
+		list minorsize = BlowUpMap(minorsize);
+		minorsize[1] = minorsize[1] - 1;	
+		export(minorsize);
+	}
+	return(successorList);
+}example{
+	ring r = 0,(x(1..12)),dp;
+	matrix M = genericmat(3,4);
+	CopyDataInNextChartsAndBlowUp(M,std(minor(M,1)),1);	
+}
+
+
+
+
+
+proc generic_gauss(matrix N, int number_rows, int number_cols)
+"USAGE: generic_gauss(matrix N, int number_rows, int number_cols ); computes the gaussian steps in the resolution process.
+RETURN: matrix M
+EXAMPLE: example generic_gauss; shows an example
+"
+{		
+	int i,j,k;
+	
+	intvec newcols, newrows, cols, rows;
+	
+	
+	cols = 1..number_cols;
+	rows = 1..number_rows;
+	matrix N2 = submat(N,rows,cols);	//Gaussian steps
+	matrix colN = colred(N2);
+	matrix redN = rowred(colN);
+	
+	for(j =1; j<= number_rows;j++){
+		for(k = 1; k<= number_cols;k++){
+			if(redN[j,k] == 1) {break;}
+		}
+		if(redN[j,k] == 1) {break;}  
+	}										// 1 at position [j,k] -> choose submatrix without this entry
+		
+	if(j==1){
+		newrows = 2..number_rows;
+	} else{ 
+		if (j == number_rows){
+			newrows = 1..number_rows-1; 
+		} else{
+			newrows = 1..j-1,j+1,,number_rows;
+		}
+	}
+	if(k==1){
+		newcols = 2..number_cols;
+	} else{ 
+		if (k == number_cols){
+			newcols = 1..number_cols-1; 
+		} else{
+			newcols = 1..k-1,k+1,,number_cols;
+		}
+	}
+	matrix M = submat(redN,newrows,newcols);
+		
+	
+	return(M);
+}example{
+	//Todo
+}
+
+proc skewsymmetric_gauss(matrix N, int number_rows, int number_cols)
+"USAGE: skewsymmetric_gauss(matrix N, int number_rows, int number_cols ); computes the gaussian steps in the resolution process.
+RETURN: matrix M
+EXAMPLE: example skewsymmetric_gauss; shows an example
+"
+{		
+	int i,j,k,l;
+	
+	intvec newcols, newrows, cols, rows;
+	intvec coordinatesOfOne;
+	
+	cols = 1..number_cols;
+	rows = 1..number_rows;
+	//print(N);
+	matrix redN = submat(N,rows,cols);
+	//destroys the skewsymmetric structure :
+	//matrix redN = rowred(colN);
+	
+	for(j = 1; j<= number_rows;j++){
+		for(k = 1; k<= number_cols;k++){
+			if(redN[j,k] == 1) {coordinatesOfOne = j,k;}
+		} 
+	}										// 1 at position [j,k] -> choose submatrix without this entry
+	
+	matrix Ntemp = redN;
+	//print("vorher");
+	//print(redN);
+	//[j,k] is the entry which equals 1 -> [k,j] equals -1
+	for(i = 1; i <= number_rows; i++){							//row operations for the first 0-column
+		//if(i != coordinatesOfOne[1] and i != coordinatesOfOne[2]){
+			for(l = 1; l<=number_cols; l++){
+				if(i != coordinatesOfOne[1] and i != coordinatesOfOne[2]){
+					redN[i,l] = Ntemp[i,l] - Ntemp[coordinatesOfOne[1],l] * Ntemp[i,l];
+				}
+			}
+		//}
+	}
+	//print("erste operation");
+	Ntemp = redN;
+	//print(Ntemp);
+
+
+	// let the column entries vanish:
+	for(l=1;l<=number_cols;l++){
+		if(coordinatesOfOne[2] != l){
+			redN[coordinatesOfOne[1],l] = 0;
+		}
+	}
+	
+	Ntemp = redN;
+	//print("zweite operation");
+	//print(Ntemp);
+	
+	//TODO!
+	for(i = 1; i <= number_rows; i++){							//row operations for the second 0-column
+		for(l = 1; l<=number_cols; l++){
+			if(l != coordinatesOfOne[2]){
+				redN[i,l] = Ntemp[i,l] + Ntemp[coordinatesOfOne[2],l] * Ntemp[i,l];
+			}
+		}
+	}
+	Ntemp = redN;
+	//print("dritte operation");
+	
+	//print(Ntemp[3,3]);
+	//print(Ntemp[4,4]);
+	
+	// let the column entries vanish:
+	for(l=1;l<=number_cols;l++){
+		if(coordinatesOfOne[1] != l){
+			redN[coordinatesOfOne[2],l] = 0;
+		}
+	}
+	
+	Ntemp = redN;
+	//print("vierte operation");
+	//print(Ntemp);
+	
+	
+	
+	
+	//print(redN);
+	int changed = 0;
+	for(i=1;i<=number_cols;i++){
+		if(i != j and i != k){
+			if(changed == 0){						// because we do not need a leading zero-entry in the intvec newcols
+				newcols[1] = i;	
+				changed = 1;
+			}else{
+				newcols = newcols,i;
+			}	
+		}
+	}
+	
+	
+	matrix M = submat(redN,newcols,newcols);
+		
+	
+	return(M);
+}example{
+		//TODO
+}
+
+
+proc generic_transformation_of_variables(matrix M)
+"USAGE: generic_transformaion(matrix M); computes the transformation of variables
+RETURN: list of matrix M and the ideal of the minors of the desired size
+EXAMPLE: example generic_transformation_of_variables; shows an example
+"
+{
+	int i,j;
+	
+	int number_cols = ncols(M);
+	int number_rows = nrows(M);
+	int new_nvars = 1; 											// init = 0; counts the new necessary variables
+	matrix newM = M;
+	
+	for(i = 1; i<= number_rows; i++){							//Todo: right order of cols and rows???
+		for(j = 1; j<= number_cols; j++){
+			newM[i,j] = var(new_nvars);
+			new_nvars++;
+		}
+	}
+	ideal minorideal = minor(newM,minorsize[1]);				//Calculate minor ideal of the right size
+					
+	return(newM, minorideal);
+}example{
+		//TODO
+}
+
+
+
+proc skewsymmetric_transformation_of_variables(matrix M)
+"USAGE: skewsymmetric_transformaion(matrix M); computes the transformation of variables
+RETURN: list of matrix M and the ideal of the minors of the desired size
+EXAMPLE: example generic_transformation_of_variables; shows an example
+"
+{
+	int i,j;
+	
+	int number_cols = ncols(M);
+	int number_rows = nrows(M);
+	int new_nvars = 1; 											// init = 0; counts the new necessary variables
+	matrix newM = M;
+
+	for(i = 1; i<= number_rows; i++){							//Todo: right order of cols and rows???
+		for(j = i+1; j<= number_cols; j++){
+			if(M[i,j] != 0){
+				newM[i,j] = var(new_nvars);
+				newM[j,i] = -var(new_nvars);
+				new_nvars++;
+			}
+		}
+	}
+	ideal minorideal = minor(newM,minorsize[1]);				//Calculate minor ideal of the right size
+	return(newM, minorideal);	
+}example{
+	//TODO	
+}

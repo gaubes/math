@@ -1,0 +1,2852 @@
+version=" "; // $Id$
+category=" ";
+info="
+LIBRARY:  cjs.lib 
+AUTHOR:  Sabrina Alexandra Gaube, sabrina-gaube@web.de
+
+
+PROCEDURES:
+	list_to_ideal(L); translates the data from a list corresponding to a chart of the blowing up to the corresponding ideal
+	ideal_to_list(L); translates an ideal to the data of a list corresponding to a chart of the blowing up
+	init_binomial_cjs(I,mode); initialize the call of the CJS algorithm for a binomial variety
+	binomial_cjs(I,L,mode); main method of recursive CJS. gets the actual chart and a binomial variety
+	CopiesOfCharts(CJSYRetList,activeList,chartnumber); copies data from a recursive CJS and transform data to the upper call of CJS
+	gcd_of_polynomial_and_variable(f,x); returns the gcd(f,x) and the exponent of x in the gcd
+	
+	init_lists(I); initialize the list data-structure w.r.t the input binomialideal
+	compute_center(L,Y); transform the ideal Y to a centerlist w.r.t the actual chart L
+	compute_invariants(activeList); computes (1,...,1,maxord(I))
+	invariantHasImproved(invariant, invariant_new); checks whether invariant has improved
+	AddReadableOutputToChart(activeList); returns a human readable version of the data of the strict transform of the chart activeList
+	transformation(activeList,mode); calculate the blowup combinatorical and do the transformation of the ringvariables
+	SetAllBoundaryCompOld(E); sets all the signs of the entries of the input boundary to a negative sign
+	IntersectionWithOldComponents(list L); intersects (as varieties) all compoents of centerlist with the old Boundary components 
+	resetAllLabels(list L); set all labels to zero, if the maximal order improves
+	
+	ChangeListForSTDCalculation(list L, int mode); changes data of L[1] and L[2] in case of no standardbase
+	elimparts_in_IX(list L); simplifies the generators of the ideal IX in order to make it checkable whether it is singular or nor
+	
+	isEndChart(list L); in case of hypersurfaces: checks whether maxord == 1 and whether there are no old components anymore 
+";
+
+
+LIB "elim.lib";
+LIB "gitfan.lib";
+LIB "linalg.lib";
+LIB "general.lib";
+LIB "primdecint.lib";
+LIB "presolve.lib";
+
+LIB "resolve.lib"; //blowUp2
+LIB "sing.lib"; // slocus-method only for testing!
+
+proc list_to_ideal(list L)
+"USAGE: list_to_ideal(list L); L[i] like in the data of the blowing up charts L[i]
+RETURN: ideal I corresponding to the data of L[1]
+		
+EXAMPLE: list_to_ideal; shows an example
+"{
+	list A = L[1][1];
+	list B = L[1][2];
+	list C = L[1][3];
+	//list E = L[1][4];		
+	
+	int idealsize = size(A);
+	int n = nvars(basering);
+	poly f1 = 1;
+	poly f2 = 1;
+	ideal I;
+	int i; int index;
+	
+	for (index=1; index<= idealsize; index++){
+		f1=1;
+		f2=1;
+		if(B[index][1] >=0){			//else: monomial for the variables
+			for (i=1; i<=n;i++){
+				if(A[index][i]!=0){
+					f1 = f1 * var(i)^(A[index][i]);
+				}
+				if(B[index][i]!=0){
+					f2 = f2 * var(i)^(B[index][i]);
+				}
+			//	if(C[index][i]!=0){						//only calculate maxord of the strict transform
+			//		f1 = f1 * var(i)^(C[index][i]);
+			//		f2 = f2 * var(i)^(C[index][i]);
+			//	}		
+			}
+			I[size(I)+1] = f1-f2;
+		} else{							//monomial case
+			f2 = 0;
+			for (i=1; i<=n;i++){
+				if(C[index][i]!=0){
+					f1 = f1 * var(i)^(C[index][i]);
+				}
+			}
+		}
+		I[index] = f1-f2; 
+	}
+	
+	return(I);	
+}
+example
+{ "EXAMPLE:"; echo = 2;
+  ring r=integer,(x(1..7)),lp;
+  poly f = x(1)^2*x(4)-x(3)^3*x(5)^6; 
+  poly g = x(1)*(x(7)^10*x(2)^2-x(4)^7*x(7)^12);
+  ideal J = ideal(f,g);
+  ideal I = ideal(f);
+  list L = ideal_to_list(J,3);
+  list_to_ideal(L[1]);
+}
+
+
+proc ideal_to_list(ideal I)
+"USAGE: ideal_to_list(ideal I); I = <fi> = <x^Ci(x^Ai+-x^Bi)> polynomialIdeal for i>=1 
+RETURN: List L:
+		L[1] represents the data of I as the chart data in a list L[i]:
+		
+EXAMPLE: ideal_to_list; shows an example
+"{
+int n = nvars(basering);
+	int i; int j;
+	int idealsize = ncols(I);	
+	int minimum;	
+
+	list A;					
+	list B;										
+	list C;		
+	
+	//init vectors A and B for each polynomial in I:
+	for (i = 1; i<= idealsize; i++){
+		if (size(I[i])==1){							// I[i] is monomial
+			A[i] = 0:n;
+			B[i] = -1:n;
+			C[i] = leadexp(I[i]);
+		} else {									// I[i] is polynomial
+			A[i] = leadexp(I[i]);
+			B[i] = leadexp(I[i]-lead(I[i]));
+			C[i] = 0:n;
+		}
+	}
+
+	//init vectors Ci for polynomial j in I 
+	for(j=1; j<=idealsize; j++) {
+		if (size(I[j])!=1){	
+			for(i=1; i<= n; i++) {
+				minimum = min(A[j][i],B[j][i]);
+				C[j][i] = minimum;
+				A[j][i] = A[j][i]-minimum;
+				B[j][i] = B[j][i]-minimum;
+			}
+		}
+	}
+		
+	list L;
+	L[1] = list(A,B,C);
+	return(L);					
+}
+example
+{ "EXAMPLE:"; echo = 2;
+  ring r=integer,(x(1..7)),lp;
+  poly f = x(1)^2*x(4)-x(3)^3*x(5)^6; 
+  poly g = x(1)*(x(7)^10*x(2)^2-x(4)^7*x(7)^12);
+  ideal J = ideal(f,g);
+  ideal I = ideal(f);
+  ideal_to_list(J);
+}
+
+
+
+//Only for debugging:
+proc boundary_weakly_permissible(ideal Y, list B)
+"USAGE: boundary_weakly_permissible(ideal Y, list B); checks whether Y is B-weakly permissible
+RETURN: 1, if Y is B-weakly permissible
+		0, otherwise
+		
+EXAMPLE: boundary_weakly_permissible; shows an example
+"{
+	//TODO
+	//check if Y regular -> maxord(Y)=1 und hat nur transversale crossings mit B -> Jacobi-Kriterium
+	return(1);
+}
+
+
+//Only for debugging:
+proc transversal_crossings(ideal Y,ideal Bi)
+"USAGE: transversal_crossings(ideal Y,ideal Bi); checks whether Y and component Bi of B have only transversal crossings
+RETURN: 1, if Y and Bi have only transversal crossings
+		0, otherwise
+		
+EXAMPLE: transversal_crossings; shows an example
+"{
+	//TODO
+	// Jacobi-Criterion
+	return(1);
+	
+}
+
+//initiale Aufruf-Methode von CJS, um Liste einmalig zu deklarieren
+proc init_binomial_cjs(ideal I,int mode) //mode = 1 strict transform, mode = 2 weak transform
+"USAGE: init_binomial_cjs(ideal I); computes the resolution of singularities of I, with cjs
+RETURN: L list of charts
+
+EXAMPLE : init_binomial_cjs; shows an example		
+"{
+	int runtime = rtimer;
+
+	ideal sI = std(I);
+	list elimpart_list = elimpart(sI);
+	sI = elimpart_list[1]+elimpart_list[3];
+	list L = init_lists(sI);
+	//TODO: update ringtransformation with elimpart_list[5] 
+	list CJS_retList = binomial_cjs(sI,L,mode);			
+
+	return(list(CJS_retList, rtimer-runtime));
+}
+
+proc binomial_cjs(ideal IX,list L, int mode)
+"USAGE: binomial_cjs(ideal IX,list L); computes the resolution of singularities of I, with cjs
+RETURN: L list of charts
+
+EXAMPLE : binomial_cjs; shows an example		
+"{
+	int NumbOfPoly = ncols(IX);
+
+	list EndCharts; 
+	int CounterEndCharts = 0;
+	
+	int i; int j;int k; int l;
+		
+	list invariant_new;
+	ideal IX_new; ideal IX_new_elimpart;
+	ideal Y_new = 1;
+	ideal last_Center;
+	ideal last_MaxOrd;
+	list ordered_Y_new;
+	list tmp_Y; list IX_elimpart_list;
+	int n = nvars(basering);
+
+
+	
+	if(EqualityOfIdeal(L[1][5],IX)){return(L);}
+	
+	list MaxOrdOCalc;
+	list MaxOrdCalculation = L[1][2][2];
+	list invariant = L[1][2][1];			//list(1,...,1,maxord)
+	
+	L[1][7] = AddReadableOutputToChart(L[1]);
+
+	print(L[1]);
+
+	ideal Y = 1;
+	for(i=1; i<=size(MaxOrdCalculation); i++){						//Y = Max(X)
+		Y = Y * MaxOrdCalculation[i][1];
+	}
+	
+	if(EqualityOfIdeal(Y,IX) == 1){													// Y == X -> fertig
+		return(list(L, 1, list(1)));
+	}
+
+	if(isEndChart(L[1])){
+		return(list(L, 1, list(1)));
+	}
+
+	// in allen Karten bzw den Endkarten von CJS(Y) arbeiten und entsprechend notwendigviele Kopien anhängen!
+	L[1] = create_tower_of_centers(L[1],Y);
+	L = L + CopiesOfCharts(L[1],1); 			
+
+	for(i = 2; i <= size(L);i++){
+		print(i);
+		//print(L[i]);
+		invariant = L[i][2][1];							
+		//if(i==2 or i ==8 or i == 27 or i == 73 or i == 179 or i == 411 ){~;}
+		if(i==48){print(L[i]);~;}
+			last_Center = L[i][3][size(L[i][3])][1][1];				//last entry of tower of centers
+			L[i] = transformation(L[i],mode,i);
+			L[i] = ChangeListForSTDCalculation(L[i],mode);			//Calculate std(IX) and change data in L[i][1] and the invariant in L[i][2][1]
+			L[i] = elimparts_in_IX(L[i]);
+			//IX_new = list_to_ideal(L[i]);
+			IXnew = L[i][1][1];
+
+			MaxOrdOCalc = MaxOrdArithO(L[i][5],IX_new, L[i]); 					
+			L[i][5] = MaxOrdOCalc[2];
+			L[i][2][1] = MaxOrdOCalc[1][1];
+			MaxOrdCalculation = MaxOrdOCalc[1];
+			invariant_new = MaxOrdCalculation[1];
+			//invariant_new = compute_invariants(L[i]);
+			tmp_Y = MaxOrdCalculation[2];											//tmp_Y = Y_1 u ... u Y_r, irred decomp of Y:= MaxOrd(X)
+			Y_new = 1;																// in order to compute the union of the irred comp in tmp_Y
+		
+			for(j=1; j<=size(tmp_Y); j++){
+				Y_new = Y_new * tmp_Y[j][2];										// MAxOrdArith(...)[2][j][1], ist die Primzahl ueber welcher die komp angenommen wird		
+			}
+			if( invariantHasImproved(invariant, invariant_new) == 1){ 
+				L[i][1][4] = SetAllBoundaryCompOld(L[i][1][4]);
+				//L[i] = IntersectionWithOldComponents(L[i]);
+				MaxOrdOCalc = MaxOrdArithO(L[i][5],IX_new, L[i]); 					
+				L[i][5] = MaxOrdOCalc[2];
+				MaxOrdCalculation = MaxOrdOCalc[1];
+				tmp_Y = MaxOrdCalculation[2];		
+				L[i][2][1] = invariant_new;
+				L[i][2][2] = list();
+				for(j=1; j<=size(tmp_Y); j++){
+					L[i][2][2][j] = list(tmp_Y[j][2],0);
+				}
+				
+				if(isEndChart(L[i])==1){			
+					CounterEndCharts++;
+					EndCharts[CounterEndCharts] = i;
+					i++;
+					continue;
+				}else{
+					L[i][3] = list();												//remove all labels
+					L[i] = create_tower_of_centers(L[i],IX_new);
+					if(size(L[i][3]) > 0 and isEndChart(L[i]) == 0){
+						L = L + CopiesOfCharts(L[i],i);
+					}
+				}
+		
+			} 
+			else{	//invariant has not improved
+				if(isEndChart(L[i])==1){			
+					CounterEndCharts++;
+					EndCharts[CounterEndCharts] = i;
+					i++;
+					continue;
+				} 
+		//TODO!!!
+				last_MaxOrd = 1;
+				for(j = 1; j<= size(L[i][2][2]);j++){
+					last_MaxOrd = last_MaxOrd * L[i][2][2][j][1];
+				}//Maxord has changed?
+				if(EqualityOfIdeal(Y_new,last_MaxOrd) == 0){
+					for(k=1; k<=size(L[i][2][2]);k++){
+						for(l=1; l<= size(tmp_Y); l++){
+							if(EqualityOfIdeal(L[i][2][2][k][1], tmp_Y[l][2]) == 1){
+								break;
+							}
+							if(l == size(tmp_Y)){		//MaxOrd component disappeared
+								l = l+1;
+							}
+						}
+						if(l > size(tmp_Y)){			//delete disappeared component
+							L[i][2][2] = delete(L[i][2][2],k);
+							k = k-1;					//start next loop run with same k
+						}
+					}
+					
+					//New comp in MaxOrd e.g. V(x,y,z,w) -> V(x,y,z) after old w gets new 
+					for(l=1; l<= size(tmp_Y); l++){
+						for(k=1; k<=size(L[i][2][2]);k++){
+							if(EqualityOfIdeal(L[i][2][2][k][1], tmp_Y[l][2]) == 1){
+								break;
+							}
+							if(k == size(L[i][2][2])){		//MaxOrd component disappeared
+								k = k+1;
+							}
+						}
+						if(k > size(L[i][2][2])){			//delete disappeared component
+							L[i][2][2][size(L[i][2][2])+1] = list(tmp_Y[l][2],0);
+							k = l-1;					//start next loop run with same k
+						}
+					}
+					
+					
+				}
+				if(size(L[i][3]) == 0){												//first CJS-call (first list in centerlist)
+				
+					L[i] = labeling(L[i],tmp_Y,last_Center);
+					//L[i] = IntersectionWithOldComponents(L[i]);
+					ordered_Y_new = OrderByLabel(L[i],tmp_Y);							//label shift because list indicees in singular have to start with one instead of zero 
+					Y = 1;
+					L[i][3][1] = list();
+					for(j=1; j<=size(ordered_Y_new); j++){
+						if(size(ordered_Y_new[j]) != 0){// TODO: BEtrachte MaxOrd aus L[i][2][2]!!! und label diese komponenten
+							for(k=1;k<=size(ordered_Y_new[j]); k++){
+								Y = Y* ordered_Y_new[j][k];
+								L[i][3][1][k] = list(ordered_Y_new[j][k],j-1);
+							}
+							j = size(ordered_Y_new)+1;
+							break;
+						}	
+					}
+					L[i] = create_tower_of_centers(L[i],Y);				//TODO: label1 < label 2 -> in zentrum 1 aufblasen... kein 2. listenelement hinzufügen
+
+				}else{
+					Y_new = 1;	
+					//TODO: ordered list hier auch einführen!!!!
+					for(j=1; j<=size(L[i][3][size(L[i][3])]); j++){
+						tmp_Y[j] = list(0,L[i][3][size(L[i][3])][j][1]);					// dummy value 0 in order to have the same form as below after a MaxOrdArith-call
+						Y_new = Y_new * L[i][3][size(L[i][3])][j][1];								
+					}
+					L[i] = labeling(L[i],tmp_Y,last_Center);
+					L[i] = create_tower_of_centers(L[i],Y_new);
+				}
+				if(isEndChart(L[i]) == 1){			
+					CounterEndCharts++;
+					EndCharts[CounterEndCharts] = i;
+				}else{
+					L = L + CopiesOfCharts(L[i],i);						// daher MaxOrd... besser in L[i][2][2] auslagern, um dann label1 in L[i][3][1] speicerh zu können
+				}
+			}
+			//print(L[i]);
+	}
+	return(list(L, CounterEndCharts, EndCharts));
+	
+}
+///////////////////////////////////////////////////////////////////////////////
+
+proc CopiesOfCharts(list L, int chartnumber)
+"USAGE: CopiesOfCharts(list CJSYRetList, list activeList, int chartnumber); creates the successor charts with the correct data
+RETURN: retList list of charts
+
+EXAMPLE : binomial_cjs; shows an example		
+"{
+	list successor_list = list();
+	
+	if(size(L[3][1]) == 0){return(successor_list);}
+	
+	list tmpList = L;
+	int i = 1;
+	int j; int k;
+	int Numb_center_components = 0;
+	
+	int numb_predecessor = ncols(tmpList[4]);
+	intmat path [2][numb_predecessor+1];
+	list Center = compute_center(L, L[3] [size(L[3])] [1][1] ); 		//size of last list in Centerlist
+	
+	Numb_center_components = size(blowup2(L[1][1],Center));
+	
+	//fill path in successor_chart
+	for(k=1; k<=nrows(tmpList[4]); k++){
+		for(j=1;j<=numb_predecessor; j++){
+			path[k,j] = tmpList[4][k,j];	
+		}
+	}
+	path[1,numb_predecessor+1] = chartnumber;
+
+	// construct successorlist
+	for(k=1; k<= Numb_center_components; k++){
+		successor_list[k] = tmpList;
+		path[2,numb_predecessor+1] = k;
+		successor_list[k][4] = path;
+	}
+	
+	return(successor_list);
+}
+///////////////////////////////////////////////////////////////////////////////
+proc gcd_of_polynomial_and_variable(poly f, poly x)
+"USAGE: find_highest_exponent_in_polynomial(poly f, poly x); calculates the gcd of a ring variable x and a polynomial f
+RETURN: list of the gdc and the exponent of x in the gcd
+
+EXAMPLE : gcd_of_polynomial_and_variable; shows an example		
+"{
+	int i = 1;
+	
+	if(f/x == 0) {return(list(1,0));}
+	
+	poly poly_with_highest_exponent = x; 
+	while(f/poly_with_highest_exponent!=0 ){
+		poly_with_highest_exponent = poly_with_highest_exponent * x;
+		i++;
+	}
+	i = i-1;
+	poly_with_highest_exponent = poly_with_highest_exponent / x;
+	return(list(poly_with_highest_exponent,i));
+}
+
+///////////////////////////////////////////////////////////////////////////////
+proc elimparts_in_IX(list L)
+"USAGE: simplify the generators of the ideal IX in order to make it checkable whether it is singular or nor
+RETURN: list L, with changed values in list(A,B,C), in the components of Max(X) and in the ringtransformation
+
+EXAMPLE : elimparts_in_IX; shows an example		
+"{
+	int n = nvars(basering);
+	
+	ideal IX = L[1][1];
+	intvec E = L[1][2];
+	list invariant = L[2][1];
+	list invariant_new;
+	ideal ringtransformation_tmp;
+	ideal ringtransformation = L[8];
+	
+	
+	int idealsize = size(IX);
+	int i;int j; int k; int l;int m;
+	int hasChanged = 0;
+
+
+	list L_new;
+
+	list IX_elimpart_list;	
+	ideal IX_new_elimpart;
+	ideal tmp_Center;
+	
+	poly substpoly;
+
+	IX_elimpart_list = elimpart(IX);
+	IX_new_elimpart = std(IX_elimpart_list[1] + IX_elimpart_list[3]);
+	ideal elimtransformation = IX_elimpart_list[5]; 
+
+	int idealsize_new = size(IX_new_elimpart);
+	list MaxOrdOCalc; list MaxOrdCalculation;
+	list Centerlist = L[3];
+
+	if(idealsize == idealsize_new){
+		if(EqualToZero(IX_elimpart_list[3]) == 0){		
+			hasChanged = 1;
+		}
+	} else{
+		hasChanged = 1;
+	}	
+
+	if(hasChanged == 0){				//nothing to do
+		L[7] = AddReadableOutputToChart(L);
+		return(L);
+	}
+
+	//ideal has changed:
+	//updating ringtransformation: 
+	//TODO: Multiplication with componentwise of IX_elimpart_list[5] ? 
+	for(i = 1; i<=n; i++){
+		for(j = 1; j<=n; j++){
+			if(elimtransformation[i] != 0){
+				//updating centerlist
+				for(k = 1;k<=size(Centerlist); k++){
+					for(l=1; l<=size(Centerlist[k]); l++){
+						tmp_Center = 1;
+						for(m=1; m<=size(Centerlist[k][l][1]); m++){
+							substpoly = subst(Centerlist[k][l][1][m], var(i), elimtransformation[i]);			//substitute ideal in centerlist 
+							if(substpoly != 0){
+								Centerlist[k][l][1][m] = substpoly;
+							}
+							tmp_Center = tmp_Center * Centerlist[k][l][1][m];
+						}
+					
+						//checks whether Centerlist[k][l][1] is empty:
+						if(EqualityOfIdeal(tmp_Center, 1) == 1){
+							L[3][k] = delete(L[3][k],l);
+							continue;
+						}
+					}
+				}	
+			
+				//updating Exc Divisor, C-list and ringtransformation
+				if((elimtransformation[i] div j) != 0 ){
+					hasChanged = 1;
+					E[j] = max(E[i],E[j]);		//TODO
+				
+					for(k=1; k<=n; k++){
+						ringtransformation[j][k] = ringtransformation[j][k] + ringtransformation_tmp[i][k];
+					}
+				}	
+			}
+		}
+		
+		if(hasChanged == 1){
+			E[i] = 0;
+			for(k = 1; k<=n; k++){
+				ringtransformation[i][k] = 0;
+			}
+		}
+	}
+	
+
+	L[1][1] = IX_new_elimpart;
+	L[1][2] = E;
+	//updating Max(X):
+	MaxOrdOCalc = MaxOrdArithO(L[5],IX_new_elimpart, L); 					
+
+	MaxOrdCalculation = MaxOrdOCalc[1];
+	invariant_new = MaxOrdCalculation[1];
+	L[2] = list();
+	L[2][1] = invariant_new;
+	L[2][2] = list();
+	for(i=1;i<=size(MaxOrdCalculation[2]);i++){
+		L[2][2][i] = list(MaxOrdCalculation[2][i][2],0);
+	}
+
+	L[5] = MaxOrdOCalc[2];
+	L[7] = AddReadableOutputToChart(L);
+	L[8] = ringtransformation;
+
+	return(L);
+}
+///////////////////////////////////////////////////////////////////////////////
+proc labeling(list L, list Y_new, ideal last_Center)
+"USAGE: labeling(list L); calculates the labels of the irred components of Y_new
+RETURN: list of irred components of Y_new with new labels and updated MaxOrd component L[i][2][2]
+
+EXAMPLE : labeling; shows an example		
+"{
+	int i; 	int j; int k=0; int flag;
+	int n = nvars(basering);
+	intmat path = L[4];
+	int maxlabel = ncols(path);				//TODO: number to high
+
+	intvec E = L[1][2];
+	list lastMaxOrdList = L[2][2];
+	ideal lastMaxOrdIdeal;
+	int oldLabel;
+	
+	poly excdiv_var;
+	
+	
+	for(i = 1; i<= size(lastMaxOrdList);i++){
+		lastMaxOrdIdeal = lastMaxOrdList[i][1];
+		if(EqualityOfIdeal(lastMaxOrdIdeal,last_Center)){
+			k = lastMaxOrdList[i][2];
+		}
+	}
+	
+	
+	for(i = 1; i<= n; i++){
+		if(E[i] == 2 or E[i] == -2){
+			excdiv_var  = var(i);			//read last exc_div 
+		}
+	}
+
+
+	for(j = 1; j<= size(L[2][2]); j++){
+		if(size(reduce(excdiv_var,std(L[2][2][j][1]))) == 0){			// component of MaxOrd contained in exz div 
+			if(size(reduce(  std(last_Center),std(L[2][2][j][1]) )) != 0 ){ // not dominating
+				L[2][2][j][2] = maxlabel;
+			}
+		}
+	}
+
+	if(size(L[3]) >= 1){
+		for(j = 1; j<= size(L[3][1]); j++){
+			if(size(reduce(excdiv_var,std(L[3][1][j][1]))) == 0){			// component of MaxOrd contained in exz div 
+				if(size(reduce(  std(last_Center),std(L[3][1][j][1])  )) != 0 ){ // not dominating
+					L[3][1][j][2] = maxlabel;
+				}
+			}
+		}
+	}
+
+//	if(size(L[3]) >= 1){
+//		for(j = 1; j<=size(L[3][1]); j++){
+		//	flag = 0;
+//			for(i = 1;i<= size(Y_new);i++){ 
+//				if(EqualityOfIdeal(Y_new[i][2],L[3][1][j][1]) == 1){
+//					if(size(reduce(Y_new[i][2],std(last_Center) ) ) == 0){
+//						if(size(reduce(last_Center,std( Y_new[i][2] ) ) ) == 0){	//dominating
+//							L[3][1][j][2] = k;
+//						}else{													//not dominating
+//							L[3][1][j][2] = maxlabel;
+//						}
+//					}
+//				}
+//			}
+//		}
+//	}
+//	for(j = 1; j<=size(L[2][2]); j++){
+//		flag = 0;
+//		for(i = 1;i<= size(Y_new);i++){ 
+//			if(EqualityOfIdeal(Y_new[i][2],L[2][2][j][1]) == 1){
+//				if(size(reduce(Y_new[i][2],std(last_Center) ) ) == 0){
+//						if(size(reduce(last_Center,std( Y_new[i][2] ) ) ) == 0){	//dominating
+//							L[2][2][j][2] = k;
+//						}else{													//not dominating
+//							L[2][2][j][2] = maxlabel;
+//						}
+//					}
+//			}
+//		}
+//	
+//	}
+
+	return(L);
+}
+///////////////////////////////////////////////////////////////////////////////
+
+proc resetAllLabels(list L)
+"USAGE: resetAllLabels(list L); set all labels to zero, if the maximal order improves
+RETURN: list L with all components in centerlist of label 0. 
+
+EXAMPLE : labeling; shows an example		
+"{
+	int i; int j;
+	
+	for(i=1;i<=size(L[2][2]);i++){
+			L[2][2][i][2] = 0;
+	}
+	for(i=1;i<=size(L[3]);i++){
+		for(j=1;j<=size(L[3][i]);j++){
+			L[3][i][j][2] = 0;
+		}
+	}
+	
+	return(L);
+}
+///////////////////////////////////////////////////////////////////////////////
+proc OrderByLabel(list L, list Y_new){			//creates an index shift in the label because of lists dont are allowed to have entries at index zero
+	list ordered_list = list();
+	int i; int j;
+	ideal tmp_ideal;
+	intmat path = L[4];
+	int maxlabel = ncols(path)+1;
+
+	for(i=1; i<=maxlabel; i++){
+		ordered_list[i] = list();			//otherwise it throws an exception in upper method, if ordered_list[i] does not exist
+	}
+	for(i=1;i<=size(Y_new);i++){
+		for(j=1; j<=size(L[2][2]); j++){
+			if(EqualityOfIdeal(Y_new[i][2],L[2][2][j][1])==1){
+				ordered_list[L[2][2][j][2]+1][size(ordered_list[L[2][2][j][2]+1])+1] = Y_new[i][2];
+			}
+		}	
+	}
+	return(ordered_list);
+}
+///////////////////////////////////////////////////////////////////////////////
+proc create_tower_of_centers(list L, ideal Y)
+"USAGE: create_tower_of_centers(list L, ideal Y); chart L and Y describes the locus of maximal order and MaxOrdComp describes 
+ inserts a tower of CJS-Centers
+RETURN: inputlist with changes at L[3]; there will be a list of nested CJS-Centers
+
+EXAMPLE : 		
+"{
+
+	int i;int j; int k;
+	ideal Y_old = 1;
+	int sizeL = size(L[3]);
+	int flag = 0;													//flag whether we get in the while-loop or not, because of deleting last entry only in case of entering while-loop
+	
+	if(sizeL > 0){
+		for(i=1; i<=size(L[3][sizeL]); i++){						//innerst Center of Centerlist
+			Y_old = Y_old * L[3][sizeL][i][1];
+		}	
+	}
+
+	ideal Y_new = 1;
+	list MaxOrdCalculation = MaxOrdArithO(L[5],Y,L)[1];
+	
+
+	j = size(L[3])+1;
+	L[3][j] = list();
+	for(i=1; i<=size(MaxOrdCalculation[2]); i++){						//Y = Max(X)
+		Y_new = Y_new * MaxOrdCalculation[2][i][2];
+		L[3][j][i] = list(MaxOrdCalculation[2][i][2] , 0);
+	}
+	if(EqualityOfIdeal(Y,Y_new) == 1){									// delete duplicated values
+		L[3] = delete(L[3],size(L[3]));
+		for(i = 1; i<=size(L[3][j-1]);i++){
+			for(k=1; k<= size(L[2][2]); k++){
+				if(EqualityOfIdeal(L[3][j-1][i][1], L[2][2][k][1]) == 1){
+					L[3][j-1][i][2] = L[2][2][k][2];					// copy label from MaxOrd 
+				}
+			}
+		}
+	}
+	
+	
+	while(EqualityOfIdeal(Y,Y_new) == 0){
+		flag = 1;
+		Y = Y_new;
+		MaxOrdCalculation = MaxOrdArithO(L[5],Y,L)[1];
+		j = size(L[3])+1;
+		Y_new = 1;
+		L[3][j] = list();
+		for(i=1; i<=size(MaxOrdCalculation[2]); i++){						//Y = Max(X)
+			Y_new = Y_new * MaxOrdCalculation[2][i][2];
+			L[3][j][i] = list(MaxOrdCalculation[2][i][2] ,0);
+		}
+	}
+	//last MaxOrdCalculation was superfluous -> remove last Center
+	if(size(L[3])>1 && flag == 1){
+		L[3] = delete(L[3],size(L[3]));
+	}	
+	return(L);
+}
+///////////////////////////////////////////////////////////////////////////////
+proc SetAllBoundaryCompOld(intvec E){
+	int i;
+	int n = size(E);
+	
+	for(i=1; i<=n; i++){
+		if(E[i] > 0){
+			E[i] = E[i] * (-1);
+		}
+	}
+	return(E);
+}
+///////////////////////////////////////////////////////////////////////////////
+proc MaxOrdArithO(ideal IZ, ideal IX,list L)
+"USAGE: MaxOrdArithO(ideal IZ, ideal IX,list L); IZ and IX like in MaxOrdArith and L for the actual chart of the blowing up 
+RETURN: locus of maximal order intersected with the global old components of the Boundary:
+		
+EXAMPLE: example MaxOrdArithO; shows an example
+"{	
+
+	list list_of_exponents = ideal_to_list(L[1][1]);
+	list A = list_of_exponents[1];
+	list B = list_of_exponents[2];
+	int sizeA = size(A);
+	ideal OldComps = 0;
+	int i; int j;
+	int n = nvars(basering);
+	list compsOfA;
+	list compsOfB;
+	list invariant;
+	
+	intvec E = L[1][2];
+	
+	list MaxOrdCalculation;
+	int maxord;
+	ideal MaxOrdIdeal;
+	
+	ideal I;
+	int flag = 0;
+	int sizeI = 0;
+	
+	//for optimization: only consider old components which are still in the strict transform
+	for(i=1; i<= n; i++){
+		flag = 0;
+		if(E[i] < 0){
+			for(j = 1; j<=sizeA; j++){
+				if(A[j][i] != 0 or B[j][i] != 0){
+					flag = 1;
+				}
+			}
+			if(flag == 1){
+				OldComps = OldComps + var(i); 
+			}
+		}
+	}
+	
+	I = std(IX);
+	sizeI = size(I);
+	if(EqualityOfIdeal(IZ,I) == 0 and size(reduce(IZ,std(I),1)) == 0){			//neither IZ = I nor I subset IZ
+		MaxOrdCalculation = MaxOrdArith(IZ,I);
+	} else{
+		MaxOrdCalculation = list();
+		MaxOrdCalculation[2] = list();
+		MaxOrdCalculation[2][1] = list();
+		MaxOrdCalculation[2][1][1] = 0;
+		MaxOrdCalculation[2][1][2] = IX;
+		//calculting invariant:
+		for(i=1; i<=size(IZ); i++){
+			invariant = invariant + list(1);
+		}
+		invariant[size(invariant)+1] = maxord;
+		MaxOrdCalculation[1] = invariant;
+		return(list(MaxOrdCalculation,IZ));
+	}
+	
+	maxord = MaxOrdCalculation[1][1];
+	
+	if(maxord == 0){
+		maxord = 1;
+	}
+	
+	if(maxord == 1){
+		// only one irred. component of MaxOrdArith possible in case of one input binomial
+		// todo: Change for not hypersurfaces!
+		if(sizeA==1){
+			MaxOrdIdeal = MaxOrdCalculation[2][1][2];
+			MaxOrdIdeal = MaxOrdIdeal + OldComps;
+			MaxOrdIdeal = std(MaxOrdIdeal);
+			MaxOrdCalculation = MaxOrdArith(IZ,MaxOrdIdeal);
+		}else{	//calculate max-v(X) 
+			for(i=1;i<=size(I);i++){
+				if(MaxOrdArith(0,I[i])[1] == 1){
+					IZ = IZ +I[i];
+				}
+			}
+			//for(i=1;i<=size(IZ);i++){
+			//	if(IZ[i]-lead(IZ[i]) == 1 or IZ[i]-lead(IZ[i]) == -1){	//maxord(IZ[i]) == 0 ; false! it is ==1, too
+			//		IZ = delete(IZ,i);
+			//		continue;		
+			//	}
+			//}
+			if(size(IZ) == 0){
+				IZ=0;
+			}
+			//overwrite MaxOrdCalculation:
+			if(EqualityOfIdeal(IZ,I) == 0 and size(reduce(IZ,std(I),1)) == 0){
+				MaxOrdCalculation = MaxOrdArith(IZ,I);
+				//MaxOrdCalculation = list();
+			} else{
+				MaxOrdCalculation = list();
+				MaxOrdCalculation[2] = list();
+				MaxOrdCalculation[2][1] = list();
+				MaxOrdCalculation[2][1][1] = 0;
+				MaxOrdCalculation[2][1][2] = IX;
+				//calculting invariant:
+				for(i=1; i<=size(IZ); i++){
+					invariant = invariant + list(1);
+				}
+				invariant[size(invariant)+1] = maxord;
+				MaxOrdCalculation[1] = invariant;
+				return(list(MaxOrdCalculation,IZ));
+			}
+		}
+	}
+	
+	//intersect Max-v with old boundary components
+	for(i=1; i<=size(MaxOrdCalculation[2]); i++){
+		MaxOrdCalculation[2][i][2] = MaxOrdCalculation[2][i][2] + OldComps;
+	}
+	
+	//calculating invariant:
+	for(i=1; i<=size(IZ); i++){
+		invariant = invariant + list(1);
+	}
+	invariant[size(invariant)+1] = maxord;
+	
+	MaxOrdCalculation[1] = invariant;
+	
+	return(list(MaxOrdCalculation,IZ));
+}
+
+
+///////////////////////////////////////////////////////////////////////////////
+proc IntersectionWithOldComponents(list L)
+"USAGE: IntersectionWithOldComponents(list L); intersects (as varieties) all compoents of centerlist with the old Boundary components 
+RETURN: list L which results from inputlist
+		
+EXAMPLE: example IntersectionWithOldComponents; shows an example
+"{
+	int i; int j;
+	int n = nvars(basering);
+	list list_of_exponents = ideal_to_list(L[1][1]);
+	list A = L[1][1];
+	list B = L[1][2];
+	int flag; 
+	int sizeA = size(A);
+	intvec E = L[1][4];
+	ideal OldComps;
+	
+	//calculating old components
+	//for optimization: only consider old components which are still in the strict transform
+	for(i=1; i<= n; i++){
+		flag = 0;
+		if(E[i] < 0){
+			for(j = 1; j<=sizeA; j++){
+				if(A[j][i] != 0 or B[j][i] != 0){
+					flag = 1;
+				}
+			}
+			if(flag == 1){
+				OldComps = OldComps + var(i); 
+			}
+		}
+	}
+	
+	//intersect old components with all components of centerlist 
+	for(i=1; i<=size(L[3]); i++){
+		for(j=1; j<= size(L[3][i]); j++){
+			L[3][i][j][1] = L[3][i][j][1] + OldComps;
+		}
+	}
+	
+	
+	return(L);
+}
+///////////////////////////////////////////////////////////////////////////////
+proc isEndChart(list L)
+"USAGE: isEndChart(list L); for hypersurfaces: checks whether maxord == 1 and whether there are no old components anymore 
+for binomialideals: checks whether IX contains IZ, checks whether inv = 1,...,1 and there are no old components  
+RETURN: 1, if L is endchart
+		0, otherwise
+		
+EXAMPLE: example isEndChart; shows an example
+"{
+	list invariant = L[2][1];
+	int maxord = invariant[size(invariant)];
+	ideal IX = L[1];
+	list list_of_exponents = ideal_to_list(IX);
+	list A = list_of_exponents[1];
+	list B = list_of_exponents[2];
+	intvec E = L[1][2];
+	int n = nvars(basering);
+	int i; int j;
+	int allAzero = 1;
+	int allBzero = 1;
+	int flag = 1;
+	int idealsize = size(A);
+	//ideal IX = list_to_ideal(L);
+	ideal IZ = L[5];
+
+	if(size(reduce(IZ,IX,1)) > 0) {            // IZ not in IX
+		return(1);
+	}
+
+	if(maxord > 1){				//maxord not equal to 1
+		return(0);
+	}
+	
+	for(j = 1; j<= idealsize; j++){	
+		allAzero = 1;
+		allBzero = 1;
+		for(i = 1; i<=n; i++){		//maxord == 0
+			if(A[j][i] > 0){
+				allAzero = 0;
+			}
+			if(B[j][i] > 0){
+				allBzero = 0;
+			}			
+		}
+		if(allAzero == 0 and allBzero == 0){
+			flag = 0;
+			break;
+		}
+	}
+	if(flag == 1){
+		return(1);
+	}
+	
+	// for binomial ideals:
+	if(EqualityOfIdeal(IZ,IX) == 1){
+		return(1);
+	}
+	if(EqualityOfIdeal(0,IZ) == 1){			// only possible if maxord(IZ) == 1
+		return(1);
+	}
+	
+
+	
+	//Optimization: Only consider old components which are contained in the strict transform  
+	for(i = 1; i<=n; i++){
+		if(E[i] < 0){				//old component found			
+			for(j = 1; j<=idealsize; j++){
+				if(A[j][i] > 0 or B[j][i] > 0){
+					return(0);
+				}
+			}
+		}
+	}
+	return(1);
+
+}
+///////////////////////////////////////////////////////////////////////////////
+proc ChangeListForSTDCalculation(list L, int mode){
+	ideal I = L[1][1];
+	ideal sI = std(I);
+	
+	//check if I is standard base:
+	if(EqualToZero(reduce(sI,I)) == 1){ 	//I is not standard base //maybe change this check
+		return(L);
+	}
+	
+	int i;int j;
+	int idealsize = size(sI);
+	int oldsize = size(I);
+	int n = nvars(basering);
+	
+	L[1][1] = sI;
+	L[2][1] = compute_invariants(L);
+	L[7] = AddReadableOutputToChart(L);
+	return(L);
+
+}
+
+
+
+///////////////////////////////////////////////////////////////////////////////
+//
+///////////////////////////////////////////////////////////////////////////////
+//kombinatorische Berechnungen
+///////////////////////////////////////////////////////////////////////////////
+//
+///////////////////////////////////////////////////////////////////////////////
+///////////////////////////////////////////////////////////////////////////////
+
+proc init_lists(ideal I)
+"USAGE: init_lists(ideal I); I = <fi> = <x^Ci(x^Ai+-x^Bi)> polynomialIdeal for i>=1 
+RETURN: List l:
+		L[i] represents the i-th chart of computation on I:
+		L[i][1] intvec of powers of fj, with indeces from (j-1)*n+1 to j*n where last power represents the maximum ideal
+		L[i][2] list of invariants of the ideal I -> list(1,...,1,maxord(I))
+		L[i][3] list of (Center, list of (Y and it's irred components))
+		L[i][4] matrix of path of the i-th chart
+		L[i][5] IZ such that I is included in IZ //umgebender Raum
+		L[i][6] latest transformation of the  variables of the ring
+		L[i][7] readable output of the strict transforms
+		L[i][8] transformation of ringvariables  // alle zusammen
+		
+EXAMPLE: example init_lists; shows an example
+"{	
+	int n = nvars(basering);
+	int i; int j;
+	int minimum;
+	//def r = basering;
+	
+	ideal I_new_elimpart;
+	
+	list I_elimpart_list;
+	intvec E = 0:n;
+	list MaxOrdArithReturn = list();
+	ideal Ringtransformations = maxideal(1);
+	last_map = maxideal(1);
+
+	
+	list L;
+	L[1] = list();
+	L[1][1] = list(I,E);				
+
+	
+	//Center calculations
+	if(EqualityOfIdeal(0,I) == 0){
+		MaxOrdArithReturn = MaxOrdArithO(ideal(0),I,L[1]);
+		list MaxOrdCenter = MaxOrdArithReturn[1];
+		L[1][2] = list();
+		L[1][2][1] = MaxOrdCenter[1];
+		L[1][2][2] = list();
+		L[1][3] = list();
+		L[1][3][1] = list();
+		for(i=1;i<=size(MaxOrdCenter[2]);i++){
+			L[1][3][1][i] = list(MaxOrdCenter[2][i][2],0);
+			L[1][2][2][i] = list(MaxOrdCenter[2][i][2],0);
+			//Centerideal = Centerideal * MaxOrdCenter[2][i][2];
+		}
+		L[1][5] = MaxOrdArithReturn[2];
+	}								
+	
+	intmat path[2][1] = 0,-1; 										//path of the current chart
+	L[1][4] = path;
+	L[1][6] = last_map;									
+	L[1][8] = Ringtransformations;
+	return(L);
+}
+example
+{ "EXAMPLE:"; echo = 2;
+  ring r = integer,(x(1..7)),lp;
+
+}
+
+///////////////////////////////////////////////////////////////////////////////
+proc compute_center(list L, ideal Y)
+"USAGE: compute_center(list L, ideal Y);  Y = I(V(x1,...,xr)); translates the ideal as a list of Center
+RETURN: list Center of next blowup where int i in Center means the variable x_i
+		and list(list(),list()), if there is no next blowup.
+"{
+		//nothing to do
+	ideal Center = Y;
+
+	return(Center);
+}
+///////////////////////////////////////////////////////////////////////////////
+proc compute_invariants(list activeList)
+"USAGE: compute_invariants(list activeList, int index); activeList: chart of blowUp, index: number of polynomial which defines the invariant calculation
+RETURN: list of invariants: 
+	a_max: max entry in list A[index],
+	counter_a_max: number of entries equal to a_max,
+	b_max: max entry in list B[index], 
+	counter_b_max: number of entries equal to b_max
+"{
+	ideal IX = activeList[1][1];
+	ideal IZ = activeList[5];
+	
+	return (MaxOrdArithO(IZ,IX,activeList)[1][1]);						
+}
+///////////////////////////////////////////////////////////////////////////////
+proc invariantHasImproved(list invariant, list invariant_new){
+	int i; int j;
+	
+	if(size(invariant_new) > size(invariant)){			//(1,...,1,maxord) more one entries
+		return(1);
+	}
+	if(size(invariant_new)< size(invariant)){
+		print("Something strange happens with the invariant");
+		~;
+	}
+	
+	for(i=1; i<=size(invariant);i++){
+		if(invariant[i] > invariant_new[i]){
+			return(1);
+		}if(invariant[i] < invariant_new[i]){
+			print("Invariante ist gestiegen!");
+			return(0);
+		}
+	}
+	return(0);
+}
+///////////////////////////////////////////////////////////////////////////////
+proc calculate_minimum(list L, int index)
+"USAGE: calculate_minimum(list L, int index);  
+RETURN: minimum of Polynom with number index at Positions of Center
+		
+EXAMPLE: example calculate_minimum; shows an example
+"{ 	
+return(0);		//not necessary for CJS
+}
+
+///////////////////////////////////////////////////////////////////////////////
+proc AddReadableOutputToChart(list activeList)
+"USAGE: AddReadableOutputToChart(list activeList); activeList: chart of blowUp
+RETURN: a list of human readable polynomials of activeList 
+"{
+	ideal IX = activeList[1][1];
+	
+	list returnList = list();
+	int index;
+	
+
+	int NumbOfIndices = size(IX);				
+	
+	for(index = 1; index <= NumbOfIndices; index++){	
+		returnList[index] = IX[index];	
+	}
+	return(returnList);
+}
+
+proc transformation(list activeList, int mode, int chart)
+"USAGE: transformation(list activeList, int mode); 
+	activeList: chart of blowUp, 
+	mode: mode of blowUp
+	chart: only for debugging
+RETURN: minimum of Polynom with number index at Positions of Center
+"{ 	
+	def oldring = basering;
+	int n = nvars(basering);
+	int j; int i; int k; int l;
+	int numberOfBinom;
+	list returnList = list();
+
+	//read data
+	ideal IX = activeList[1][1];
+	intvec E = activeList[1][2];
+	ideal IZ = activeList[5];
+	
+	list IZ_list = ideal_to_list(IZ)[1];
+
+	
+	for(j = 1; j<=n; j++){				//resetting last divisor
+		if(E[j] == 2){
+			E[j] = 1;
+		}
+		if(E[j] == -2){
+			E[j] = -1;
+		}
+	}
+
+	ideal Ringtransformations = activeList[8];
+	ideal Ringtransformations_tmp;
+	
+	//map last_transformation = oldring,var(1);
+
+	ideal Center = activeList[3][size(activeList[3])][1][1]; 	// Center is saved in last component of Centerlist
+	ideal allCenterComp = Center;			
+	
+	//int minimum_old = activeList[3][2];
+	int centervalue_old; 
+	int minimum;
+	int idealsize = size(IX);			//ideal generators and monomials for the variables of the ring
+	int IZ_idealsize = size(IZ);
+
+	
+	intmat path = activeList[4];
+	i = path[2,ncols(path)];		//x_i -chart
+	//int curr_age = ncols(path)+1;			
+
+	list list_of_blowingup-charts_IX = blowUp2(IX,Center);
+	def si = list_of_blowingup-charts_IX[i];
+	
+	
+	//constr. map from ring s1 to oldring
+	//ggf nochmal überdenken.... string ablaufen oder so
+	map identity_map = si,ideal(0);	
+	for (j=1; j<=n; j++){
+		if(j<i){
+			identity_map[j] = var(j);
+			last_transformation[j] = var(j); 
+		}
+		if(j==i){
+			identity_map[n] = var(j);
+			last_transformation[n] = var(j);
+		}
+		if(j>i){
+			identity_map[j-1] = var(j);
+			last_transformation[j-1] = var(j);
+		}
+	}
+
+	ideal Ringtransformation_tmp = identity_map(bM);
+	ideal IX_new = identity_map(Jnew);		//automatically std(IX_new) automatically strict transform? //mode = 2 possible via subst(...) and factor out manually
+	ideal excdiv = identity_map(eD);		//todo: was passiert hiermit genau?
+	
+		//TODO: DIFFERENT METHODS OF TRANSFORMATION!!!
+
+	//Ringtransformation:
+	// via subst(...)
+	//BLOWUP IZ
+	list list_of_blowingup-charts_IZ = blowUp2(IZ,Center);
+	def siIZ = list_of_blowingup-charts_IZ[i];
+	identity_map = siIZ, last_transformation;
+	ideal IZ_new = identity_map(Jnew); //only mode = 1
+	//BLOWUP TOWER
+
+
+
+
+	
+	//Rekursionsschritte der Zentren aufblasen (Monome)
+	ideal recursiveCenter = 1;
+	ideal tower_new;
+	//todo: other mode
+	for(l=1; l<= size(activeList[3])-1; l++ ){			//outer center has other calculation rules and inner center is going to be deleted		
+		recursiveCenter = 1;	
+		for(j=1; j<=size(activeList[3][l]);j++){		
+			recursiveCenter = recursiveCenter * activeList[3][l][j][1];
+		}
+		
+		list list_of_blowingup-charts_tower = blowUp2(IZ,Center);
+		//was ist mit leeren aufblasungen?
+		def si_tower = list_of_blowingup-charts_tower[i];
+		
+		identity_map = si_tower, last_transformation;
+		tower_new = identity_map(Jnew);
+		kill list_of_blowingup-charts_tower;
+		irredComp = minAssZ(tower_new);					//it is possible that minAssZ(tmpCenter) is empty
+		for(j=1; j<=size(irredComp);j++){		
+			activeList[3][l][j][1] = irredComp[j];	
+				
+		}
+	}
+	//TODO:
+	//strict transform in both modes because of irreducible components ???
+	//maybe in case of weak transform: take value of min_sum???
+	
+	//BLOWUP Exc div
+	//BLOWUP Max(IX) ? 
+	
+
+	activeList[3] = delete(activeList[3],size(activeList[3]));		//remove the innerst center of centerlist 
+	
+	E[allCenterComp[i]] = 2;		//save exc divisor of this blow up as latest and new boundary component
+	returnList[1] = list(IX_new,E);
+
+	//returnList[2] = compute_invariants(list(A,B), index);
+	//Center = compute_center(returnList, index, mode);
+	returnList[3] = activeList[3];
+
+	//minimum = calculate_minimum(returnList, index);
+		
+	//returnList[3] = list(Center,minimum);
+	returnList[4] = activeList[4];
+	returnList[5] = std(list_to_ideal(IZ_list)); 										
+	returnList[6] = last_transformation;
+	returnList[7] = AddReadableOutputToChart(returnList);
+	returnList[8] = Ringtransformations;
+	returnList[2] = activeList[2];					//copy old labels and components
+	
+	returnList[2][1] = compute_invariants(returnList);
+	//returnList[2] = compute_invariants(returnList);
+	return(returnList);
+}
+
+///////////////////////////////////////////////////////////////////////////////
+///////////////////////////////////////////////////////////////////////////////
+//
+///////////////////////////////////////////////////////////////////////////////
+//Max Ord Berechnungen
+///////////////////////////////////////////////////////////////////////////////
+//
+///////////////////////////////////////////////////////////////////////////////
+
+LIB "elim.lib";
+LIB "gitfan.lib";
+LIB "linalg.lib";
+LIB "general.lib";
+LIB "primdecint.lib";
+///////////////////////////////////////////////////////////////////////////////
+
+
+//--------------------------------------EqualityofIdeals----------------
+
+proc EqualityOfIdeal(ideal I, ideal J)
+"USAGE: EqualityOfIdeal(ideal I, ideal J); I,J ideals
+RETURN: 1 if ideals are equal, 0 otherwise
+EXAMPLE: example EqualityOfIdeal; shows an example
+"
+{    // gibt 1 zurück, wenn Ideale gleich, sonst 0
+	ideal sI = std(I);
+	ideal sJ = std(J);
+ 
+	if(size(reduce(I,sJ,1)) > 0) {            // I not in J
+		return(0);
+	}
+	if(size(reduce(J,sI,1)) > 0) {            // J not in I
+		return(0);
+	}
+	return(1);                                // Equal
+}
+
+example
+{ "EXAMPLE:"; echo = 2;
+  ring r=0,(x,y,z),dp;
+  poly f1=(x2+y2+z2-6)*(x-y)*(x-1);
+  poly f2=(x2+y2+z2-6)*(x-z)*(y-2);
+  poly f3=(x2+y2+z2-6)*(x-y)*(x-z)*(z-3);
+  ideal I=f1,f2,f3;
+  poly g1=(x2+y2+z2-6)*(x-1);
+  poly g2=(x2+y2+z2-6)*(y-2);
+  poly g3=(x2+y2+z2-6)*(z-3);
+  ideal J=g1,g2,g3;
+  EqualityOfIdeal(I,J);
+  EqualityOfIdeal(J,J);
+}
+///////////////////////////////////////////////////////////////////////////////
+
+proc EqualToZero(ideal I)
+"USAGE: EqualToZero(ideal I); I ideal
+RETURN:1 if I is equal zero, 0 otherwise
+EXAMPLE: example EqualToZero; shows an example
+"
+{                
+	if (size(reduce(I,std(0),1)) > 0) {  		// I==0?
+		return(0); 
+	}
+	return(1);
+}
+example
+{ "EXAMPLE:"; echo = 2;
+  ring r = 0,(x,y,z),dp;
+  poly f1 = (x2+y2+z2-6)*(x-y)*(x-1);
+  poly f2 = (x2+y2+z2-6)*(x-z)*(y-2);
+  poly f3 = (x2+y2+z2-6)*(x-y)*(x-z)*(z-3);
+  ideal I = ideal(f1,f2,f3);
+  ideal J = 0;
+  EqualToZero(I);
+  EqualToZero(J);
+}
+///////////////////////////////////////////////////////////////////////////////
+
+proc EqualToOneOverZp(ideal I, int p)
+"USAGE: EqualToOneOverZp(ideal I, int p); I ideal, p prime
+RETURN:1 if I is equal one over Zp, 0 otherwise
+EXAMPLE: example EqualToOneOverZp; shows an example
+"
+{
+	ideal sI = std(I);
+ 
+	if (EqualityOfIdeal(sI,1)) {
+		return(1);
+	} 
+	if (!IntersectionWithRingEqualZero(I) ) {				//I \cap Ring != <0>
+		int Constant = int (IntersectionWithRing(sI)[1]);  
+		if (Constant % p != 0) {
+			return(1);
+		}  
+	}
+	return(0);
+}
+example
+{ "EXAMPLE:"; echo = 2;
+  ring r = integer,(x,y,z),dp;
+  ideal I = ideal(3*z,14);
+  ideal J = (5*x,6);
+  EqualToOneOverZp(I,3);
+  EqualToOneOverZp(J,3);
+}
+///////////////////////////////////////////////////////////////////////////////
+//--------------------------------------EqualityofLists----------------
+proc EqualityOfList(list l, list k)
+"USAGE: EqualityOfList(list l,list k); l,k lists
+RETURN:1 if l and k are equal, 0 otherwise
+EXAMPLE: example EqualityOfList; shows an example
+"
+{
+	int i;
+	int listlength = size(l);
+	if( listlength != size(k)) {				//lists have same size?
+		return(0);
+	}
+	
+	for(i = 1; i<= listlength; i++) {			//compare every listmember
+		if(l[i] != k[i]) {
+			return(0);
+		}
+	}
+	return(1);  
+}
+example
+{ "EXAMPLE:"; echo = 2;
+  ring r = integer,(x,y,z),dp;
+  list L1 = 1,2,3;
+  list L2 = 4,5,6;
+  list L3 = 1,2,3;
+  EqualityOfList(L1,L2);
+  EqualityOfList(L1,L3);
+}
+///////////////////////////////////////////////////////////////////////////////
+proc MemberOfList( poly f, list L)
+"USAGE: MemberOfList(poly f, list L); f poly, L list 
+RETURN:1 if f is member of L[1], 0 otherwise
+EXAMPLE: example MemberOfList; shows an example
+"
+{
+	int length = size(L[1]);
+	int i;
+	for(i = 1; i <= length; i++) {
+		if(L[1][i] == f) {
+			return(1);
+		}
+	}
+	return(0);
+}
+example
+{ "EXAMPLE:"; echo = 2;
+  ring r = integer,(x,y,z),dp;
+  poly f = 3x2 + 4x+5;
+  poly g = 3x+7;
+  poly h = 7y-4x;
+  poly i = 24;
+  list L;
+  L[1] = list(f,g,i);
+  MemberOfList(f,L);
+  MemberOfList(h,L);
+}
+
+///////////////////////////////////////////////////////////////////////////////
+//-----------------------------Append to List---------------------------
+//Nur einfuegen wenn nicht bereits vorhanden
+proc AppendListToList(list L1, list L2)
+"USAGE: AppendListToList(list L1, list L2); L1,L2 lists
+RETURN: a list which contains L1 with appended elements of list L2 without doublelising 
+EXAMPLE: example AppendListToList; shows an example
+"
+{
+	list returnList = L1;
+	int i; int j; int contained;
+  
+	for(j = 1; j <= size(L2);j++) {						//check which members of L2 should append to L1
+		contained = 0;
+		for (i =1; i<=size(L1); i++) {
+			if (L1[i] == L2[j]) {contained = 1;}
+		}
+		if(contained == 0) {							//only append if current member of L2 is not contained in L1
+			returnList[size(returnList)+1] = L2[j];
+		}
+	}
+  
+  return(returnList);
+}
+example
+{ "EXAMPLE:"; echo = 2;
+  list L1 = 1,2,3;
+  list L2 = 4,5,6;
+  list L3 = 5,2,4;
+  AppendListToList(L1,L2);
+  AppendListToList(L1,L3);
+}
+///////////////////////////////////////////////////////////////////////////////
+//---------------------------List of Coeffizient -----------------------
+proc ListOfCoeffs(ideal I) 
+"USAGE: ListOfCoeffs(ideal I) ; I ideal
+RETURN: list of coefficients of I for calculate HasseDeriv
+EXAMPLE: example ListOfCoeffs; shows an example
+"
+{
+	int n = nvars(basering);  
+	int tmp; int i;
+	poly ProductOfVars = 1;
+  
+	for(tmp = 1; tmp <=n; tmp++) {       			//Product of t(i) 
+		ProductOfVars = ProductOfVars * var(tmp);
+	}
+  
+  
+	list CoeffsI;
+	for (i = 1; i<= size(I); i++) {
+		matrix CoeffsFtemp = coef(I[i], ProductOfVars);    
+		for (tmp = 1; tmp <= ncols(CoeffsFtemp); tmp++) {
+			if(CoeffsFtemp[2,tmp]!=0) {
+				CoeffsI[size(CoeffsI)+1] = CoeffsFtemp[2,tmp];      
+			}
+		}
+	}
+	return(CoeffsI);
+}
+example
+{ "EXAMPLE:"; echo = 2;
+  ring R = integer,(x,y,z),dp;
+  ideal I = ideal(3x2,7y,z);
+  ListOfCoeffs(I);
+}
+///////////////////////////////////////////////////////////////////////////////
+//---------------------------Ideal geschnitten Z -----------------------
+proc IntersectionWithRingEqualZero(ideal I)
+"USAGE: IntersectionWithRingEqualZero(ideal I) ; I ideal
+RETURN: 1 if the intersection of I and the ring is equal to zero, 0 otherwise
+EXAMPLE: example IntersectionWithRingEqualZero; shows an example
+"
+{       //needs global order
+	ideal J = I;
+	int n = nvars(basering);
+	int i;
+	for (i = 1; i <= n; i++) {                       // eliminate one Variable after another  
+		J = eliminate(J,var(i));                       
+	}
+  
+	return(EqualToZero(J));
+}
+example
+{ "EXAMPLE:"; echo = 2;
+  ring R = integer,(x,y,z),dp;
+  ideal I = ideal(3x2,7y,z,5);
+  ideal J = ideal(3x2,7y,z);
+  IntersectionWithRingEqualZero(I);
+  IntersectionWithRingEqualZero(J);
+}
+///////////////////////////////////////////////////////////////////////////////
+proc IntersectionWithRing(ideal I)
+"USAGE: IntersectionWithRing(ideal I); I ideal
+RETURN: ideal J which represent the intersection of I and the ring
+EXAMPLE: example IntersectionWithRing; shows an example
+"
+{
+	ideal J = I;
+	int n = nvars(basering);
+	int i;
+	for (i=1; i<=n; i++) {                       // eliminate one Variable after another    
+		J = eliminate(J,var(i));                 
+	}
+	return(J);	
+}
+example
+{ "EXAMPLE:"; echo = 2;
+  ring R = integer,(x,y,z),dp;
+  ideal I = ideal(3x2,7y,z,5);
+  ideal J = ideal(3x2,7y,z);
+  IntersectionWithRing(I);
+  IntersectionWithRing(J);
+}
+
+///////////////////////////////////////////////////////////////////////////////
+
+
+//----------------------------------------------------------------------
+//
+//----------------------Hasse Derivation--------------------------------
+//
+//----------------------------------------------------------------------
+
+
+proc HasseDeriv(ideal IZ, ideal IX, list y, matrix M)
+"USAGE: HasseDeriv(ideal IZ, ideal IX, list y, matrix M) ; IZ, IX ideals, y system of parameters, M matrix
+RETURN: list L, so that L[i] contains the i-th Hasse-Schmidt derivations
+EXAMPLE: example HasseDeriv; shows an example
+"
+{
+	//check whether input is correctly
+	if(EqualityOfIdeal(IZ,IX)) {ERROR("IZ und IX duerfen nicht identisch sein!");}
+	if(size(reduce(IZ,std(IX),1)) > 0) {            // IZ nicht in IX
+		~;
+		ERROR("IZ muss in IX enthalten sein");
+	}
+  
+	def Ring = basering; 
+	int n = nvars(Ring);                        // number of variables
+	int t = size(IZ);							// number of generators of IZ
+	list RetList;								// List which will contain the HasseDerivs
+  
+	ideal Idealf = std(reduce(IX,std(IZ)));		//for calculating f_i in Hasse-Schmidt derivationalgorithm
+	int r = size(IX);
+	int j; int i;
+  
+	if(EqualToZero(IZ)) {                    		//IZ==0  
+		execute("ring RADRING=(0),("+varstr(basering)+",t(1..n)),("+ordstr(basering)+",dp(n));");    // wechsel nach Q, weil JET nicht für Z implementiert ist
+		ideal IZ = imap(Ring, IZ);
+		ideal IX = imap(Ring,IX); 						//IX = <f1,...,fr>
+		list F;
+
+    
+		for (j=1; j <=r; j++) {
+			F[j] = IX[j];
+			for (i=1; i<=n; i++) {
+				F[j] = subst(F[j],var(i),var(i)+t(i)); 	//Fj(y,t) = fj(x1+t1,....,xn+tn);
+			}
+		}
+
+		i = 1;
+		list tempid;
+    
+		for (j=1; j<=t; j++) {      				//tempid = g1,...,gt,f1,...,fr
+			tempid[j] = IZ[j];
+		}
+		for (j=1; j<=r; j++) {
+			tempid[t+j] = IX[j];
+		}
+    
+    
+		int tmp; 
+		poly ProductOfVars = 1;
+		for(tmp = 1; tmp <= n; tmp++) {       //Product of t(i) 
+			ProductOfVars = ProductOfVars * t(tmp);
+		}
+		intvec weights = 0:n,1:n;
+		poly tmpJeti;
+		matrix CoeffsT;
+		// erster schleifendurchlauf garantiert, erst danach gibt es RetList[i-1]-> pruefen am ende der whileschleife -> break
+		while(1) {  
+			RetList[i] = tempid;
+			weights = 0:n,1:n;            // vektor mit n Nullen gefolgt von n Einsen/ Gewichte fuer Jet
+      
+			//for (...){tempid= tempid, ...}
+			for(j=1; j<=r; j++) {                                 
+				tmpJeti = jet(F[j],i,weights) - jet(F[j],i-1,weights); //homogenes polynom vom grad i in t1,...,tn
+				CoeffsT = coef(tmpJeti, ProductOfVars);    				//koeffizienten von t^alpha:
+				for (tmp = 1; tmp <= ncols(CoeffsT); tmp++) {
+					if(CoeffsT[2,tmp]!=0) {
+						tempid[size(tempid)+1] = CoeffsT[2,tmp];      
+					}
+				}
+			}
+			i++;
+      
+			if( EqualityOfList(tempid, RetList[i-1])) {       //Leavingcondition while
+				break;
+			}
+		}
+    
+    
+		if (r > 0) {
+			ring OLDRING = Ring;                                //zurueck zum alten ring, falls es Ringwechsel gab
+			return(imap(RADRING,RetList));
+		}
+	} else {											//case IZ!=0
+																
+		r = size(Idealf);                                          
+		poly detM = det(M);
+		matrix A = inverse_L(M)[1];   					//Matrix of Cofactors of M
+		ideal Itemp = IX;
+		intvec Nullvektor = 0:size(y);					
+		intvec note = 0:size(y);
+		list L;
+	
+	
+		for (i = 1; i <=r; i++) {
+			L[i] = list(Idealf[i],Nullvektor);                 // L[i] = fi,(0,....,0)
+		}
+  
+		int old = 0;
+		int cur = r;
+		poly ftemp;
+  
+		while(IntersectionWithRingEqualZero(Itemp)) {
+			ftemp=0;      
+			for(i=old+1; i<= cur; i++) {     					          
+				for(j=1;j <= size(y);j++) {					//(ftemp,note) = L[i]
+					ftemp = L[i][1];
+					note = L[i][2];
+					note[j] = note[j]+1;
+					ftemp = PseudoDifferential(ftemp,j,A,detM,IZ,y) / note[j];
+        
+					if(ftemp != 0){    							//only append to list L if derivation is not null
+						L[size(L)+1] = list(ftemp,note);
+						Itemp = Itemp + ideal(ftemp);
+					}
+				}
+			}
+					
+			Itemp = sat(Itemp,detM)[1];         			// eliminate elements in V(q) 
+			RetList[size(RetList)+1] = Itemp;
+			old = cur;										// dont calculate the same Derivations twice
+			cur = size(L);
+		}
+	}	//end case IZ !=0
+	
+	return(RetList);
+}
+example
+{ "EXAMPLE:"; echo = 2;
+  ring R = integer,(x(1..4)),dp;
+  ideal IX = ideal(3*x(2),4*x(4)^3);
+  ideal IZ = 0;
+  list y = x(1..4);
+  matrix M = 0;
+  HasseDeriv(IZ,IX,y,M);
+  IZ = ideal(x(1));
+  IX = IZ + ideal(3*x(2),4*x(4)^3);
+  y = x(2..4);
+  M = 1;
+  HasseDeriv(IZ,IX,y,M);
+}
+
+
+//--------------------------------------CoDim---------------------------
+
+//////////////////////////////////////////////////////////////////////////////
+proc Codimension(ideal I)
+"USAGE: Codimension(ideal I); I ideal
+RETURN: the codimension of I
+EXAMPLE: example Codimension; shows an example
+"
+{
+	ideal J = std(I);
+	int NumbOfVars = nvars(basering);
+	int DimJ = dim(J);
+  
+	if (charstr(basering)== "ZZ"){ 				//basering == integer?
+		return( NumbOfVars - DimJ+1);
+	} else {  									//basering is a field
+		return(NumbOfVars - DimJ); 
+	}
+}
+example
+{ "EXAMPLE:"; echo = 2;
+  ring R = integer,(x,y,z,a,b),dp;
+  ideal I = ideal(3x2,7y);
+  Codimension(I);
+  ring R2 = 0,(x,y,z,a,b),dp;
+  ideal I = ideal(3x2,7y);
+  Codimension(I);
+}
+//////////////////////////////////////////////////////////////////////////////
+//-----------------------------Bedingung an L1--------------------------
+proc ConditionOfL1(list L1, ideal JX)
+"USAGE: ConditionOfL1(list L1,ideal JX); L1 list of matrices, JX ideal
+RETURN: 1 if ConditionOfL1 is satisfied, 0 otherwise
+EXAMPLE: example ConditionOfL1; shows an example
+"
+{
+	ideal tmp = det(L1[1]);
+	int i;
+  
+	for (i=2; i<= size(L1); i++) {
+		tmp = intersect(tmp,det(L1[i]));
+	}
+	//option(prot);
+    if (deg(std(JX+tmp)[1]) == 0) { 	// X geschnitten tmp = leere Menge
+    	return(1);
+  }
+  return(0);
+}
+example
+{ "EXAMPLE:"; echo = 2;
+  ring R = integer,(x,y,z),dp;
+  ideal JX = ideal(x2,y);
+  list L1 = 2x,2y;
+  ConditionOfL1(L1,JX);
+}
+//-----------------------------L1 erzeugen------------------------------
+
+// Erst werden Codim(Z)-Teilmengen der Spalten und Zeilen gebildet. 
+// Dann werden alle quadratischen Untermatrizen der Codim(Z) von JZ durch Spaltenweises (danach Zeilenweise) gebildet
+// Dabei wird nach jedem Hinzufuegen geprueft, ob die Bedingung bereits erfuellt ist
+  
+proc GenerateL1(int CoDimZ, matrix JZ, ideal IX, ideal IZ)
+"USAGE: GenerateL1(int CoDimZ, matrix JZ, ideal IX); L1 list of matrices, IX, IZ ideal
+RETURN: list L1 with to respect to conditions on maxord calculations and indices of the colomns of JZ
+EXAMPLE: example GenerateL1; shows an example
+"
+{
+	list L1;
+	int maxcol = ncols(JZ);
+	int maxrow = nrows(JZ);
+
+	int i; int j; int k;
+
+	
+	//check whether Jacobian matrix has a single one
+	// and manipulate JZ
+	poly hi;
+	int positionOfOne_col = 0; int positionOfOne_row = 0;
+	int containsOne = 0;
+	for (i=1; i<=maxrow; i++) {
+		for (j=1; j<=maxcol; j++){
+			if(JZ[i,j]==1){
+				containsOne = 1;
+				positionOfOne_col = j;
+				positionOfOne_row = i;
+				//sprintf("1 gefunden: %s", positionOfOne_row);
+				hi = var(j) - IZ[i];				//hi = x_j -fi
+				for(k=1; k<=maxrow; k++) {
+					if(k != i){
+						IZ[k] = subst(IZ[k],var(j),hi);		// fk(xj -> hi) for all k != i
+					}
+				}
+			}
+			if(containsOne == 1) {break;}			// for only finding a single one
+		}
+		if(containsOne == 1) {break;}				// for only finding a single one
+	}
+	JZ = jacob(IZ);
+	
+	maxcol = ncols(JZ);
+	maxrow = nrows(JZ);
+	//end manipulation on JZ
+
+
+	list colIndices = subsets(maxcol,CoDimZ);  		//benoetigt LIB "gitfan.lib";
+	list rowIndices = subsets(maxrow,CoDimZ);
+  
+	intvec rowIndex = 0:CoDimZ;
+	intvec colIndex = 0:CoDimZ;
+  
+	int NumbColIndices = size(colIndices); 
+	int NumbRowIndices = size(rowIndices);   
+  
+  
+	for (i=1; i<= NumbRowIndices;i++) {  			//Zeilenweise indicelisten zum Intvec konvertieren
+    //list to intvec:
+    //sprintf("i:%s von %s",i,NumbRowIndices);
+		for(j =1; j<= CoDimZ;j++) {
+			rowIndex[j] = int(rowIndices[i][j]);  	//naechsten rowVector nehmen
+		}
+		for(j = 1; j<= NumbColIndices; j++) { 		//rowVector (zeile) fest, colvektor (spalte) veraendern
+			//sprintf("j:%s von %s",j, NumbColIndices);
+			for(k =1; k <= CoDimZ; k++) {     		//naechsten ColVector (spalte) nehmen
+				colIndex[k] = int(colIndices[j][k]); 
+			}
+			//print("Berechne Untermatrix:");
+		
+			//try to optimize calculation i,j der 1 sollen in der überdeckung sein
+			//sprintf("Position: %s",positionOfOne_col);
+			//sprintf("rowIndex: %s",rowIndex);
+			if(positionOfOne_row != 0){
+				if( MemberOfList(poly(positionOfOne_row),colIndex) && MemberOfList(poly(positionOfOne_col),rowIndex) ) {		//es wurde 1 in JZ gefunden -> beachte nur untermatrizen mit diesem eintrag
+					L1[size(L1)+1] = submat(JZ,rowIndex,colIndex);
+					//end of optimizing
+				}
+			} else { 			// keine optimierung moeglich -> fuege alle hinzu
+				L1[size(L1)+1] = submat(JZ,rowIndex,colIndex);     //Erzeugen der Menge L //NICHT EXPLIZIT NOTWENDIG 
+			}
+			if(size(L1)!=0){
+				if(ConditionOfL1(L1,IX)) {return(list(L1,colIndices));}
+			}
+		}
+		if(size(L1)!=0){
+			if( ConditionOfL1(L1,IX)) {break;}   		 // Falls man so nur aus der innen for-schleife rauskommt
+		}
+	}
+	
+	return(list(L1,colIndices));
+	//return(list(L1,rowIndices));
+}
+example
+{ "EXAMPLE:"; echo = 2;
+  ring R = integer,(x,y,z),dp;
+  ideal IZ = x2;
+  int codimZ = Codimension(IZ);
+  matrix JZ = jacob(IZ);
+  ideal IX = IZ + ideal(y);
+  GenerateL1(codimZ,JZ,IX,IZ);
+}
+
+//////////////////////////////////////////////////////////////////////////////
+//----------------------y Menge erzeugen -------------------------------
+proc SystemOfParameters(int member, list colIndices, int CoDimZ)
+"USAGE: SystemOfParameters(int member, list colIndices, int CoDimZ); member integer, colIndices list, CoDimZ codimension of IZ
+RETURN: list which ist a system of parameters with respect to conditions on maxord calculations
+EXAMPLE: example SystemOfParameters; shows an example
+"
+{
+	list y;
+	//Bestimme y ueber Colindices, die nicht in Spaltenvector[Spaltennummer] benutzt werden  
+	int NumbColIndices = size(colIndices);  
+	int NumbSpaltenvectorM = member % NumbColIndices;   //Zugrundeliegender Spaltenvektor aus JZ
+	
+	if (NumbSpaltenvectorM == 0) { 
+		NumbSpaltenvectorM = NumbColIndices;   
+	}
+	list Spaltenvector = colIndices[NumbSpaltenvectorM];
+	int j; int k; int equal;    
+	
+	for(j = 1; j <= nvars(basering); j++) {
+		equal = 0;
+		for(k = 1; k <= CoDimZ; k++) {
+			if(j	==	Spaltenvector[k]){equal = 1;}
+		}
+		if(equal == 0){
+			y[size(y)+1]= var(j);   					 // j is not in indices, append xj to y
+		}
+	}    
+  
+  return(y);
+}
+example
+{ "EXAMPLE:"; echo = 2;
+  ring R = integer,(x(1..8)),dp;
+  int member = 1;
+  list colIndices;
+  colIndices[1]= list(2,3,4,5,6,7,8);
+  int CoDimZ = 1;
+  SystemOfParameters(member,colIndices,CoDimZ);
+}
+
+//----------------------------------------------------------------------
+//-------------Derivates with respect to parametersystem----------------
+
+proc PseudoDifferential(poly f, int j, matrix A, poly q, ideal I, list y)
+"USAGE: PseudoDifferential(poly f, int j, matrix A, poly q, ideal I, list y); f,q poly, j integer, A Matrix, I ideal, y system of parameters
+RETURN: poly which is the pseudodifferential of f with respect to a system of parameters
+EXAMPLE: example PseudoDifferential; shows an example
+"
+{
+	poly RetPoly = q * diff(f,y[j]);
+	poly SubPoly;
+	poly F = reduce(f,std(I));              
+	int NumbOfVar = nvars(basering);
+	list OtherVar;					//List of Variables which aren't in parametersystem y
+	int VarInY;						//bool for check whether current variable is in parametersystem y
+	int k; int i; int l;
+	
+	for (k = 1; k<= NumbOfVar; k++){
+		VarInY = 0;
+		for (i = 1; i<= size(y); i++) {
+			if(y[i] == var(k)) {
+				VarInY=1;
+			}
+		}
+		if(!VarInY) {
+			OtherVar[size(OtherVar)+1] = var(k);	//append xk to list of variables which are not in y
+		}
+	}
+	
+	for (k = 1; k <= ncols(A); k++) {				// See formular in remark 4.2
+		for (l = 1; l<= nrows(A);l++) {
+			SubPoly = diff(I[l], y[j]) * A[l][k] * diff(F,OtherVar[k]);
+			SubPoly = reduce(SubPoly, std(I)); 
+			RetPoly = RetPoly - SubPoly;
+		}
+	}
+
+	return(RetPoly);
+}
+example
+{ "EXAMPLE:"; echo = 2;
+  ring R = integer,(x(1..8)),dp;
+  poly f = x(1)^2+3*x(2);
+  int j = 2;
+  ideal IZ = ideal(x(2));
+  ideal JX = ideal(x(1)^2,x(2));
+  list y = SystemOfParameters(3,list(1,2,3,4,5,6,7,8),1);
+  matrix M = 1;
+  poly detM = det(M);
+  matrix A = inverse_L(M)[1];
+  PseudoDifferential(f,j,A,detM,IZ,y);
+}
+//----------------------------------------------------------------------
+//////////////////////////////////////////////////////////////////////////////
+//----------------------------------------------------------------------
+//
+//----------------------MaxOrd Char K = 0-------------------------------
+//
+//----------------------------------------------------------------------
+proc MaxOrd (ideal IZ, ideal IX)
+"USAGE: MaxOrd (ideal IZ, ideal IX); IZ,IX ideals
+RETURN: list of the maximal order and the ideal of the locus of maximal order in geometric case
+EXAMPLE: example MaxOrd; shows an example
+"
+{
+	//check whether input is correctly
+	//if(EqualityOfIdeal(IZ,IX)) {ERROR("IZ und IX duerfen nicht identisch sein!");} //rausgenommen fuer Beispiel 1
+	if(size(reduce(IZ,std(IX),1)) > 0) {            // IZ nicht in IX
+		~;ERROR("IZ muss in IX enthalten sein");
+	}
+  
+	ideal Itemp = IX;
+	ideal Imax = 1;
+	int maxord = 0;
+	int r = size(IX);
+	int n = nvars(basering);
+  
+	int i; int j; ideal f;
+  
+	if (EqualToZero(IZ)) {									//case IZ ==0
+		while (!EqualityOfIdeal(Itemp,1)) {
+			Imax = Itemp;
+			r = size(Itemp);
+			f = Itemp;
+			for (i = 1; i<=r;i++) {
+				for (j = 1; j<=n; j++) {
+					Itemp = Itemp + ideal ( diff( f[i],var(j) ));  
+				}
+			}
+			maxord = maxord+1;
+		}
+		// for a better representation of the output:
+		list Imaxneu = minAssZ(Imax);
+		list RetList;
+		ideal Itmp;
+		
+		for (i = 1;i <= size(Imaxneu); i++){
+			Itmp = ideal(Imaxneu[i]);
+			RetList[i] = Itmp;
+		}
+		
+		
+	} else {												//case IZ != 0
+
+		int CoDimZ = Codimension(IZ);
+		//Berechnung der Menge L:
+		matrix JZ = jacob(IZ);
+		list GeneratorList = GenerateL1(CoDimZ, JZ,IX,IZ);
+		list L1 = GeneratorList[1];
+		list colIndices = GeneratorList[2];
+  
+		ideal polynomialFi;
+		maxord = 1;
+		int thisord = 0;
+		Imax = 1;
+		int s; poly detM; list y; int member;
+		matrix M;
+		matrix A;
+		ideal Iold;
+  
+		for (member = 1; member <= size(L1); member++){ 	 //member stimmt mit i aus L und indices ueberein
+			M = L1[member];
+			detM = det(M);
+			Iold = 0;
+		    thisord = 0;
+
+			if(detM != 0){									//only need calculations if detM != 0
+				y = SystemOfParameters( member, colIndices, CoDimZ);  
+				s = size(y);
+				Itemp = IX;
+				A = inverse_L(M)[1]; 				//A is matrix of cofactors of M
+    
+				while(!EqualityOfIdeal(Itemp+IZ,1)) {
+					Iold = Itemp;
+					//polynomialFi = simplify(reduce(Itemp,std(IZ)),2);                  // nach remark 4.2
+					polynomialFi = std(reduce(Itemp,std(IZ)));
+					r = size(polynomialFi);
+					Iold = Itemp;
+        
+					for (i = 1; i<=r; i++ ) {
+						for (j = 1; j<=s; j++) {
+							Itemp = Itemp + ideal(PseudoDifferential(polynomialFi[i],j,A,detM,IZ,y));   //derivation with respect to parametersystem y
+						}  
+					}
+    
+					Itemp = sat(Itemp,det(M))[1];   //eliminate factor q in derivations
+					thisord = thisord+1;
+				}
+      
+					//check whether its nessecary to glue components
+				if (thisord >= maxord) {
+					if (thisord == maxord) {		//glue components
+						Imax = intersect(Imax,Iold);
+					} else {						//change maxord and ideal of maxorderlocus
+						maxord = thisord;
+						Imax = Iold;
+					}  
+				}
+			}
+		} 
+
+		// better readable output:
+		list Imaxneu = minAssZ(Imax);
+		list RetList;
+		ideal Itmp;
+		for (i=1;i<=size(Imaxneu);i++){
+			Itmp = ideal(Imaxneu[i]);
+			RetList[i] = Itmp;
+		}
+	}
+	
+	return(list(maxord,Imax,RetList));						// return for both cases
+}
+example
+{ "EXAMPLE:"; echo = 2;
+  ring R = 0,(x(1..8)),dp;
+  ideal IZ = 0;
+  ideal IX = ideal(3*x(4)^5);
+  MaxOrd(IZ,IX);
+  IZ = ideal(x(1)*x(2)-1);
+  IX = IZ+ideal(3*x(4)^5);
+  MaxOrd(IZ,IX);
+}
+//////////////////////////////////////////////////////////////////////////////
+//---------------------------------qadic Expansion ---------------------
+
+proc qAdicExpansion(int q, int c)
+"USAGE: qAdicExpansion(int q, int c); q,c int
+RETURN: the q-adic expansion of c 
+EXAMPLE: example qAdicExpansion; shows an example
+"
+{
+	int m = nvars(basering);   //m  Nummer der letzten variable Q
+	poly expansion = poly(c);
+	int absc = absValue(c);                    // - als rechenzeichen betrachten
+	int i;
+
+	while(1) {
+		for (i = 0; i <= absc; i++) {      //find highest exponent of q
+			if( (q^i <= absc ) && (q^(i+1)> absc )) {
+				break;
+			}
+		}
+		if (i==0) { break;}
+			absc = absc - q^i;
+			if (c<0) {
+				expansion = expansion + q^i - var(m)^i; 
+			} else {
+				expansion = expansion - q^i + var(m)^i;
+		}
+		
+		//expansion;
+		if(absc == 0){
+			return(expansion);
+		}
+	}
+	return(expansion);
+}
+example
+{ "EXAMPLE:"; echo = 2;
+  ring R = integer,(x(1),x(2),Q),dp;
+  int q = 3;
+  int c = 17;
+  qAdicExpansion(q,c);
+  q = 3;
+  c = -17;
+  qAdicExpansion(q,c);
+}
+//////////////////////////////////////////////////////////////////////////////
+//---------------------------Replace Coeffs in Ideal--------------------
+
+//--------------------Coefficient Replace in INTPRIMES------------------
+proc ReplaceCoeffsIntPrimesNEW(ideal I)
+"USAGE: ReplaceCoeffsIntPrimesNEW(ideal I); I ideal
+RETURN: Ideal J which is like ideal I with replaced coefficients with respect to NEW Construction 4.4 in Interesting Primes
+EXAMPLE: example ReplaceCoeffsIntPrimesNEW; shows an example
+"
+{
+	ideal J;
+	poly ftemp;           //aktueller Erzeuger
+	poly TempMonom; poly currentTwoAdicExpansion; poly ReplacedPolyCQ;
+	list PrimefactorsOfCoef;
+	int deltafactor;			//1 or -1 
+	int ai; int pi; int currentcoef;
+ 
+	int i; int j; int k; list F; list EmptyList;
+	
+	for (i = 1; i<= size(I);i++) {
+		F = EmptyList;                        //F als Liste von Monomen auf leere Liste zurücksetzen
+		ftemp = I[i];
+		for (j = 1; j<= size(ftemp); j++) {
+			F[size(F)+1] = ftemp[j]; 
+		}
+    
+    //Ersetzung eines Koeffizienten:
+		for(j = 1; j<= size(F); j++) {           //Coeffs ersetzen           
+			currentcoef = int(leadcoef(F[j]));     // c aus ZZ in Construction 4.4.
+			TempMonom = leadmonom(F[j]);
+      
+			PrimefactorsOfCoef = primefactors(currentcoef);
+			deltafactor = PrimefactorsOfCoef[3];
+			ReplacedPolyCQ = 1;					//fuer jeden coefficient bei 1  starten
+      	
+			for(k = 1; k<=size(PrimefactorsOfCoef[1]); k++){  
+				ai = PrimefactorsOfCoef[2][k];
+				pi = PrimefactorsOfCoef[1][k];
+				currentTwoAdicExpansion = qAdicExpansion(2, pi);					//P_i(Q) 
+				ReplacedPolyCQ = ReplacedPolyCQ * ((currentTwoAdicExpansion)^ai);	
+			}
+			F[j] = deltafactor * ReplacedPolyCQ * TempMonom; 
+		}
+    
+		J[i] = 0;
+		for (j=1; j<= size(F); j++) {
+			J[i]= J[i] + F[j];                        //Polynome zusammenpuzzeln
+		}
+	}
+	return(J);
+}
+example
+{ "EXAMPLE:"; echo = 2;
+  ring R = integer,(x,y,z,Q),dp;
+  ideal I = ideal(5*x,42*y,40z);
+  ReplaceCoeffsIntPrimesNEW(I);
+}
+
+//////////////////////////////////////////////////////////////////////////////
+//--------------------------Horizontal Decomposition--------------------
+
+proc HorizontalDecomposition (ideal I)
+"USAGE: HorizontalDecomposition(ideal I); I ideal
+RETURN: list of primdecomposition and the indices of horizontal and vertical components
+EXAMPLE: example HorizontalDecomposition; shows an example
+"
+{
+	def OLDRING = basering;
+	list primdec = primdecZ(I);
+  
+	execute("ring RATIONALS=(0),("+varstr(basering)+"),("+ordstr(basering)+");"); 
+	ideal I = imap(OLDRING,I);
+	list primdec = imap(OLDRING,primdec);
+	int length = size(primdec);
+	list HorizontalIndices; list VerticalIndices;
+  
+	int i;
+  
+	for (i=1; i<= length; i++) {
+		if(!EqualityOfIdeal( IntersectionWithRing(primdec[i][2]), 1)) {  		// faserprodukt mit Q ueber Z ungleich leere Menge
+			HorizontalIndices[size(HorizontalIndices)+1] = i;
+		}else {
+			VerticalIndices[size(VerticalIndices)+1] = i;
+		}
+	}
+	
+	ring oldring = OLDRING; 
+	return(list( imap(RATIONALS,primdec), HorizontalIndices, VerticalIndices ));
+}
+example
+{ "EXAMPLE:"; echo = 2;
+  ring R = integer,(x,y,z),dp;
+  ideal I = ideal(3x2,7y);
+  ideal J = ideal(5);
+  HorizontalDecomposition(I);
+  HorizontalDecomposition(J);
+}
+
+
+
+//----------------------------------------------------------------------
+//
+//----------------------InterestingPrimes-------------------------------
+//
+//----------------------------------------------------------------------
+
+
+
+proc InterestingPrimes (ideal IZ, ideal IX)
+"USAGE: InterestingPrimes(ideal IZ, ideal IX); IZ,IX ideals
+RETURN: list of interesting primes
+EXAMPLE: example InterestingPrimes; shows an example
+"
+{
+	//check whether input is correct
+	if(EqualityOfIdeal(IZ,IX)) {ERROR("IZ und IX duerfen nicht identisch sein!");}    
+	if(size(reduce(IZ,std(IX),1)) > 0) {            // IZ nicht in IX
+		ERROR("IZ muss in IX enthalten sein");
+	}
+  
+	def Ring = basering;
+	list resultlist;
+	ideal Itemp = IX;
+	ideal Iint = 0;
+	int r = size(IX);
+	int n = nvars(basering);
+  
+	int i; int j;
+	ideal f;
+  
+	if (EqualToZero(IZ)) {								// case: IZ == 0
+		while(EqualToZero(Iint)) {
+			r = size(Itemp);
+			f = Itemp;
+			for (i = 1; i<=r ; i++) {
+				for (j = 1; j<=n; j++) {
+					//sprintf("Variable %s von %s",j,n);
+					Itemp = Itemp + ideal ( diff( f[i],var(j) ));
+					//sprintf("Itemp: %s",Itemp);
+				}
+			}
+		Iint = IntersectionWithRing(std(Itemp));
+		//print("Iint berechnet");
+		}
+		
+		resultlist = primefactors(bigint(Iint[1]))[1];  //nur die primfaktoren von Iint[1], da hauptideal ggf stdbasis von Iint
+		
+	} else {  											// case IZ != 0
+  
+		// calculation of IZhor and IZver
+		list IZdecomposition = HorizontalDecomposition(IZ);
+		list primdecIZ = IZdecomposition[1];
+		list HorizontalIndices = IZdecomposition[2];
+		list VerticalIndices = IZdecomposition[3];
+		ideal IZver; ideal IZhor;
+	
+		if (size(VerticalIndices) >= 1){
+			IZver = primdecIZ[VerticalIndices[1]][1]; 		//[i][1] fuer die hoechste auftauchende Potenz in der Primfaktorzerlegung 
+		}
+	
+		for (i = 2; i <= size(VerticalIndices); i++) {
+			IZver = intersect(IZver,primdecIZ[VerticalIndices[i]][1]);
+		}
+		for (i = 1;i <= size(HorizontalIndices); i++) {
+			IZhor = IZhor + primdecIZ[HorizontalIndices[i]][2]; //[i][2] fuer den Primfaktor
+		}
+		//end of calculation of IZhor and IZver
+		//print("Decomposition ready");
+
+		if ( !EqualToZero(IntersectionWithRing(IZver)) && !EqualityOfIdeal(IntersectionWithRing(IZver),1) )  {
+			resultlist = primefactors( int(IntersectionWithRing(IZver)[1]) )[1];
+		}
+  
+		execute("ring RADRING=("+charstr(basering)+"),("+varstr(basering)+",Q),("+ordstr(basering)+",dp(1));");  //Ringwechsel nach Z[x1,...,xn,Q]
+		ideal IZ = imap(Ring, IZ);
+		ideal IX = imap(Ring, IX);
+		ideal IZhor = imap(Ring, IZhor);
+		ideal Itemp;
+		ideal Iint;
+		ideal JX;
+		ideal JZ;
+
+
+		JX = ReplaceCoeffsIntPrimesNEW(ideal(IX+IZhor));
+		JZ = ReplaceCoeffsIntPrimesNEW(IZhor);
+		//print("Replace Ideals in InterestingPrimes ready"); 
+		int CoDimZ = Codimension(IZ);
+		matrix JJZ = jacob(JZ);
+		
+		list GeneratorList = GenerateL1(CoDimZ, JJZ,JX,JZ);
+		//print("GeneratorList in InterestingPrimes ready"); 
+		
+		list L1 = GeneratorList[1];
+		//print("L1 in InterestingPrimes ready"); 
+
+		list colIndices = GeneratorList[2];
+		
+		//print("Generate L1 in InterestingPrimes ready"); 
+		
+		int s; int member; poly detM; list y;
+		matrix M; matrix A;
+		ideal Fi;
+		//print("Begin with calculation in charts (Interesting Primes)");
+		//Derivation with respect to a system of parameters
+		for (member = 1; member <= size(L1); member++){
+			M = L1[member];
+			detM = det(M);
+
+			//only calculations needed if detM != 0
+			if (detM != 0) {
+				y = SystemOfParameters( member, colIndices, CoDimZ);
+				s = size(y);
+				Itemp = JX; 
+				Iint = 0;
+				A = inverse_L(M)[1]; 			//Matrix of cofactors
+				//print("Begin: while (InterestingPrimes)");
+				while(EqualToZero(Iint)) {
+					Fi = std(reduce(Itemp,std(JZ)));              // nach remark 4.2
+					r = size(Fi);
+      
+					for (i = 1; i<=r; i++ ) {
+						for (j = 1; j<=s; j++) {
+							Itemp = Itemp + ideal(PseudoDifferential(Fi[i],j,A,detM,JZ,y));
+							Itemp = sat(Itemp,det(M))[1];		//eliminate components in V(detM)
+						}  
+					}
+					Iint = IntersectionWithRing(subst(Itemp+IZ,Q,2));	//substitute Q -> 2
+				}
+				
+				resultlist = AppendListToList(resultlist, primefactors( int(Iint[1]) ) [1]); //nicht doppelt einfuegen
+			}
+			//sprintf("Karte:%s ready in InterestingPrimes",member);
+		}
+		
+		ring OLDRING = Ring;                                
+	}
+	return(resultlist);								//output for both cases
+}
+example
+{ "EXAMPLE:"; echo = 2;
+  ring R = integer,(x,y,z),dp;
+  ideal IZ = ideal(x-4y+6z);
+  ideal IX = IZ+ideal(3x-y+7z);
+  InterestingPrimes(IZ,IX);
+  IZ = ideal(z);
+  IX = IZ + ideal(11^2+xy);
+  InterestingPrimes(IZ,IX);
+}
+//////////////////////////////////////////////////////////////////////////////
+//---------------------------Replace Coeffs in Ideal--------------------
+proc ReplaceCoeffsMaxOrdArith(ideal I, int p)
+"USAGE: ReplaceCoeffsMaxOrdArith(ideal I, int p); I ideal, p prime
+RETURN: Ideal J which is like ideal I with replaced coefficients with respect to p in MaxOrdArith algorithm
+EXAMPLE: example ReplaceCoeffsMaxOrdArith; shows an example
+"
+{
+	ideal J;
+	poly ftemp;
+	list newCoeffs; //kommen woanders her
+  
+	list TempMonom; list EmptyList; list F;
+	int i; int j;
+	
+	//split generators to monomials
+	for (i = 1; i <= size(I); i++) {
+		F = EmptyList;      //F als Liste von Monomen
+		ftemp = I[i];
+		for (j = 1; j<= size(ftemp); j++) {
+			F[j] = ftemp[j]; 
+		}
+	
+		//Coeffs ersetzen
+		for(j = 1; j <= size(F); j++) {           
+			TempMonom[1] = leadcoef(F[j]);
+			TempMonom[2] = leadmonom(F[j]);
+			TempMonom[1] = newCoeff(int(TempMonom[1]),p);  
+			F[j] = TempMonom[1] * TempMonom[2];
+		}
+    
+		//Polynome zusammenpuzzeln
+		J[i] = 0;
+		for (j=1; j<= size(F); j++) {
+			J[i]= J[i] + F[j];                        
+		}
+	}
+	return(J);
+}
+example
+{ "EXAMPLE:"; echo = 2;
+  ring R = integer,(x(1),x(2),Q),dp;
+  ideal I = ideal (5*x(2),100*x(1));
+  int p = 5;
+  ReplaceCoeffsMaxOrdArith(I,p);
+}
+//////////////////////////////////////////////////////////////////////////////
+//---------------------------Build new Coeffs---------------------------
+proc newCoeff(int oldCoeff, int p)
+"USAGE: newCoeff(int oldCoeff, int p); I ideal, p prime
+RETURN: new coefficient for the replacecoeffsmaxordarith algorithm
+EXAMPLE: example newCoeff; shows an example
+"
+{
+	int m = nvars(basering);
+	int l = SearchMaxPower(oldCoeff,p);
+	return((oldCoeff div (p^ l)) * var(m)^l);      // Neue Variable P ist die letzte Variable des neuen Rings
+}
+example
+{ "EXAMPLE:"; echo = 2;
+  ring R = integer,(x(1..2),Q),dp;
+  int oldCoeff = 25;
+  int p = 3;
+  newCoeff(oldCoeff,p);
+  p = 5;
+  newCoeff(oldCoeff,p);
+}
+//////////////////////////////////////////////////////////////////////////////
+//---------------------------Search max l-------------------------------
+proc SearchMaxPower( int c , int p)
+"USAGE: SearchMaxPower(int c , int p); c int, p prime
+RETURN: highest power of p which divides c
+EXAMPLE: example SearchMaxPower; shows an example
+"
+{
+	int MaxPower = 0;
+	int absc = absValue(c);
+ 
+	//teilerfremdheit:
+	if( (absc%p) != 0 ) {
+		return(0);
+	}
+	int i;
+  
+	//finde hoechsten teiler
+	for (i = 1; i <= absc ; i++) {
+		if (  (absc% (p^i)) == 0) {
+			MaxPower = i;
+		} else{ break;}
+	}
+	
+  return(MaxPower);
+}
+example
+{ "EXAMPLE:"; echo = 2;
+  ring R = integer,(x(1..4)),dp;
+  int c = 39;
+  int p = 3;
+  SearchMaxPower(c,p);
+  c = 81;
+  p = 3;
+  SearchMaxPower(c,p);
+}
+
+//----------------------------------------------------------------------
+//
+//----------------------MaxOrdArith-------------------------------------
+//
+//----------------------------------------------------------------------
+
+
+proc MaxOrdArith(ideal IZ, ideal IX, list #) 
+"USAGE: MaxOrdArith(ideal IZ, ideal IX[,int checkIZ]); IZ,IX ideals, checkIZ = 0 to skip checking order of IZ
+RETURN: list of the maximal order and a list of primes over which we can find the locus of maximal order and the locus of maximal order in the arithmetic case
+EXAMPLE: example MaxOrdArith; shows an example
+"
+{
+	//check whether input is allowed
+	if(EqualityOfIdeal(IZ,IX)) {ERROR("IZ und IX duerfen nicht identisch sein!");}
+	if(size(reduce(IZ,std(IX),1)) > 0) {            // IZ nicht in IX
+		print(reduce(IZ,std(IX),1));
+		~;
+		print(reduce(IZ,std(IX)));
+		ERROR("IZ muss in IX enthalten sein");
+	}
+	int checkIZ = 1;
+	// check optional parameter
+	if (size(#)!= 0){
+		checkIZ = #[1];
+	}
+	
+	if(checkIZ == 1) {
+		if(!EqualToZero(IZ)){
+			int OrderOfIZ = MaxOrdArith(ideal(0),IZ)[1];
+			if(OrderOfIZ > 1) {
+				ERROR("IZ ist nicht zulässig");
+			}
+		}
+	}
+
+	ring R = basering;
+	int n = nvars(R);
+	
+	execute("ring RADRINGQ=(0),("+varstr(basering)+"),("+ordstr(basering)+");");
+	//ideal IZ = imap(R,IZ);
+	//ideal IX = imap(R,IX);
+	ideal IZ = fetch(R,IZ);
+	ideal IX = fetch(R,IX);
+	
+	list MaxOrd0 = MaxOrd(IZ,IX);  //via imap nach Q
+	int maxord = MaxOrd0[1];
+	ideal Imax = MaxOrd0[2];
+	list ImaxZerlegt;          // damit, falls MaxOrd(Char K = 0) nichts zurückgibt liste leer ist
+	ImaxZerlegt = MaxOrd0[3];  // für ausgabe wenn horizontale komponenten im ort maximaler ordnung
+  
+	//print("MaxOrd (Char K=0) ready");
+	//ring OLDRING = R;
+	setring R;
+	ideal Imax = imap(RADRINGQ,Imax);     //Geschnitten Z[x]
+	list RetList;
+	RetList[1]= list(0,Imax);
+	list PrimeList = InterestingPrimes(IZ,IX);
+	
+	//print("InterestingPrimes ready");
+  
+	//Benutze Variablen in unterer forschleife:
+	list DiffList;
+	int m; int p; int j; int i; int k; int member;
+  
+	execute("ring RADRING=("+charstr(basering)+"),("+varstr(basering)+",P),("+ordstr(basering)+",dp(1));");  //nur ein ringwechsel fuer alle for-schleifen notwendig.
+	ideal IZ = imap(R, IZ);
+	ideal IX = imap(R, IX);
+	ideal Imax = imap(R,Imax);
+	list RetList = imap(R,RetList);
+	list EmptyList;
+  
+	ideal JX; ideal JZ; ideal TmpIdeal;
+	int locord; int s; int CoDimZ;
+	matrix M; list y; matrix JJZ;
+	list GeneratorList; list L1; list colIndices; list xP;
+
+	ideal Itmp;
+	list Imaxneu;
+	for (j = 1; j <= size(PrimeList); j++) {
+		p = PrimeList[j];	
+  
+		JX = ReplaceCoeffsMaxOrdArith(std(IX),p);
+		JZ = ReplaceCoeffsMaxOrdArith(IZ,p);
+		if(EqualToZero(IZ)) {										//case IZ == 0
+			for(i = 1; i<= nvars(RADRING); i++) {
+				xP[i]=var(i);
+			} 
+			DiffList = HasseDeriv(JZ,JX,xP,0);
+			m = size(DiffList);
+			
+			for (i = 1; i <= m; i++) {
+				TmpIdeal = 0;
+				for (k = 1; k <= size(DiffList[i]); k++) {
+					DiffList[i][k] = ideal(subst(DiffList[i][k],var(n+1),p));
+					TmpIdeal = TmpIdeal + ideal(DiffList[i][k]);
+				}
+				DiffList[i] = TmpIdeal;
+			}
+      
+			while(EqualToOneOverZp(DiffList[m],p)) {
+				m = m-1;
+			}
+			//Imaxneu = minAssZ(Imax); // readable output //redundante rechnung, da es in if-abfrage überschrieben wird???
+			//check whether we have to glue or to substitute locus of max order
+			if (m >= maxord) {
+				Imax = DiffList[m];
+				Imaxneu = minAssZ(Imax); // readable output
+				for (i = 1; i <= size(Imaxneu); i++){
+					Itmp = Imaxneu[i];
+					//substitute:
+					if (m > maxord) {
+						RetList = EmptyList; // RetList = empty list
+						maxord = m;
+						RetList[1] = list(p,Itmp);
+					//glueing:
+					} else {
+				
+						if(RetList[1][1] != 0){
+							RetList[size(RetList)+1] = list(p,Itmp);
+						}
+					}	
+				}
+			}
+      
+		}else {														//case IZ !=0
+		
+			CoDimZ = Codimension(JZ);
+        
+			//Berechnung der Menge L:
+			JJZ = jacob(JZ);
+			//GeneratorList = GenerateL1(CoDimZ, JJZ,IX);
+			GeneratorList = GenerateL1(CoDimZ, JJZ,JX,JZ);
+			L1 = GeneratorList[1];
+			colIndices = GeneratorList[2];
+      
+			locord = 1;
+			
+			for (member = 1; member <= size(L1); member++) {
+				M = L1[member];
+				if (det(M) != 0) {
+					//Parametersystem wie in char K = 0 
+					y = SystemOfParameters(member, colIndices, CoDimZ);  
+					DiffList = HasseDeriv(JZ,JX,y,M);
+					m = size(DiffList);  
+        
+					for (i = 1; i<= m; i++) {
+						DiffList[i] = ideal(subst(DiffList[i],P,p));
+					}
+          
+					while(EqualToOneOverZp(DiffList[m],p)) {    //an Zp , zusätzlich prüfen, ob konstanter Teil des Ideals teilbar durch p, wenn nein, dann einheit.
+						m = m-1;
+						if (m == 0) {break;}
+					} 
+					m=m+1;
+					//substitute Imax:
+					if (m > locord) {
+						Imax = DiffList[m-1];
+						locord = m;
+					} else {
+						//glueing:
+						if( m == locord) {
+							Imax = intersect(Imax,DiffList[m]);
+						}
+					}
+				}
+				//sprintf("Karte:%s ready in MaxOrdArith",member);
+			}
+      
+			//better output:
+			Imaxneu = minAssZ(Imax);
+			//Imaxneu = Imax;
+			for (i = 1; i <= size(Imaxneu); i++){
+				Itmp = Imaxneu[i];
+				if (locord >= maxord) {
+					if (locord > maxord) {
+						RetList = EmptyList;
+						maxord = locord;
+						RetList[1] = list(p,Itmp);
+					} else {
+						if(RetList[1][1]!=0){
+							RetList[size(RetList)+1] = list(p,Itmp);
+						}
+					}
+				}
+			}
+		
+		}//end case IZ != 0
+		//sprintf("Primzahl:%s ready in MaxOrdArith",j);
+	}// end for (InterestingPrimes)
+
+	//ring OLDRING2 = R;                                //zurueck zum alten ring
+	setring R;
+	list TempList = imap(RADRING,RetList);
+	RetList = imap(RADRING,RetList);
+	
+	if(!defined(ImaxZerlegt)){							//Für Beispiel 1, da lebt ImaxZerlegt überall und ist nicht am RADRINGQ gebunden
+		list ImaxZerlegt = imap(RADRINGQ,ImaxZerlegt);
+	}
+	//replace locus of maximal order if there are horizontal components:
+	if (TempList[1][1] == 0){
+		TempList[1][2] = ImaxZerlegt;
+		RetList = EmptyList;
+		for(i = 1; i <= size(TempList[1][2]); i++){
+			RetList[i] = list(0,TempList[1][2][i]);
+		}
+	}
+	return(list(maxord,RetList));
+}
+example
+{"EXAMPLE:"; echo = 2;
+  ring R = integer,(x,y,z),dp;
+  ideal IZ = 0;
+  ideal IX = ideal(7*z^3);
+  MaxOrdArith(IZ,IX);
+
+  IZ = ideal(x-4y+6z);
+  IX = IZ+ideal(3x-y+7z);
+  MaxOrdArith(IZ,IX);
+}
+//////////////////////////////////////////////////////////////////////////////
+
+
+
+
+
+
+
+//----------------------------------------------------------------------
+//----------------------------------------------------------------------
+//
+//----------------------random examples for testing---------------------
+//
+//----------------------------------------------------------------------
+//----------------------------------------------------------------------
+
+
+//----------------------------------------------------------------------
+//----------------------------------------------------------------------
+
+
+proc CreateRandomMonomialMatrixExample(list #)
+"USAGE: CreateRandomMonomialMatrixExample([int cols, int rows]); cols and rows of the generated matrix
+RETURN: a random monomial matrix M of dimension cols x rows, the ideal of the 2-minors of M, the slocus of the ideal of the 2-minors of M 
+EXAMPLE: example CreateRandomMonomialMatrixExample; shows an example
+"
+{
+	int n = nvars(basering);
+	int cols; int rows;
+	int i; int j;
+	ideal tmp_maxideal;
+	ideal MinorIdeal = 0;
+	ideal Sloc = 1;
+	
+	if(size(#) < 2){		//no or not enough input parameter 
+		cols = random(2,n);
+		rows = random(2,n);
+	} else{
+		rows = #[1];
+		cols = #[2];
+	}
+	
+	matrix M [rows][cols];
+	
+	
+	//while( EqualityOfIdeal(Sloc,1) == 1){
+	
+		for(i = 1; i <= rows; i++){
+			for(j = 1; j <= cols; j++){
+				tmp_maxideal = maxideal(random(1,5));					//random (1,5)-th power of the maximal ideal
+				M[i,j] = tmp_maxideal[random(1,size(tmp_maxideal))];	//choose random generator of tmp_maxideal as entry of m
+			}
+		}
+	
+		list colIndices = subsets(cols,2);						  		//generates all position column indices of 2-minors
+		list rowIndices = subsets(rows,2);
+		
+		int NumbColIndices = size(colIndices); 
+		int NumbRowIndices = size(rowIndices);
+	
+		intvec rowIndex = 0:2;											//because of conflict between data typ list and intvec
+		intvec colIndex = 0:2;
+	
+	
+		for(i = 1; i <= NumbColIndices; i++){
+			for(j = 1; j <= NumbRowIndices; j++){
+				colIndex = colIndices[i][1],colIndices[i][2];
+				rowIndex = rowIndices[j][1],rowIndices[j][2];
+				MinorIdeal[size(MinorIdeal)+1] = det(submat(M,rowIndex,colIndex ) );
+			}
+		}
+		Sloc = slocus(MinorIdeal);
+	//}
+	
+	print(M);
+	print(std(MinorIdeal));
+	print(minAssZ(Sloc));
+	
+	return(list(M, std(MinorIdeal),minAssZ(Sloc)));
+}

@@ -1,0 +1,1266 @@
+version=" "; // $Id$
+category=" ";
+info="
+LIBRARY:  combinatoric_blow_up.lib 
+AUTHOR:  Sabrina Alexandra Gaube, sabrina-gaube@web.de
+
+
+PROCEDURES:
+	init_lists(I,mode); Initializes the lists for blow up of ideal I with respect to the mode
+	fill_lists_for_next_charts(activeList, number_active_chart); returns list of successor charts
+	compute_center(list L,index ,mode); computes the center of next blow up with respect to the actual chart L, the actual polynomial with number index and the mode
+	compute_invariants(activeList, index); computes intvec of invariants (a_max,counter_a_max,b_max,counter_b_max) with respect to actual chart activeList and actual polynomial with number index
+	calculate_minimum(L,index); calculates the minimum value of the center positions in actual chart L at the polynomial with number index
+	transformation(activeList, index, mode); main process of each blow up step, with respect to the actual chart activeList, the polynomial at number index and the mode
+	isEndChartInActivePolynomial(activeList, index, mode); checks wheather activeList is Endchart for the polynomial with number index with respect to the mode
+	isEndChartForEveryPolynomial(activeList, mode); checks wheather activeList is Endchart of blow up with respect to the mode
+	StopCriterion(activeList, index, mode); submethod of isEndChartForEveryPolynomial
+	AddReadableOutputToChart(activeList); returns HumanReadable output of chart activeList
+	blowUp(I, mode); main method, calculates the whole blow up of ideal I with respect to the mode 
+	create_test_binomial(maxdegree); creates a random binomial for testing the several algorithms which could have a maximum degree of maxdegree
+	test_algorithms(binomialcount, maxdegree); tests the several methods of center choice by calculating the algorithms for binomialcount many random binomials which could have a maximum degree of maxdegree
+";
+
+///////////////////////////////////////////////////////////////////////////////
+proc init_lists(ideal I,int mode)
+"USAGE: init_lists(ideal I); I = <fi> = <x^Ci(x^Ai+-x^Bi)> polynomialIdeal for i>=1 
+RETURN: List l:
+		L[i] represents the i-th chart of computation on I:
+		L[i][1] intvec of powers of fj, with indices from (j-1)*n+1 to j*n where last power represents the maximum ideal
+		L[i][2] list of invariants of current active polynomial fj
+		L[i][3] list of (Center,minimum)
+		L[i][4] matrix of path of the i-th chart
+		
+EXAMPLE: example init_lists; shows an example
+"{	
+	int n = nvars(basering);
+	int i; int j;
+	//int idealsize = size(I);
+	int idealsize = ncols(I);	
+	int minimum;	
+
+	list A;					
+	list B;										
+	list C;
+	list E;
+	
+	//init vectors A and B for each polynomial in I:
+	for (i = 1; i<= idealsize; i++){
+		if (size(I[i])==1){							// I[i] is monomial
+			A[i] = 0:n;
+			B[i] = -1:n;
+			C[i] = leadexp(I[i]);
+		} else {									// I[i] is polynomial
+			A[i] = leadexp(I[i]);
+			B[i] = leadexp(I[i]-lead(I[i]));
+			C[i] = 0:n;
+		}
+		E[i] = 0:n;
+	}
+	// last n indices describes the ideal of ringvariables
+	//transformation of ringvariables
+	for(i = idealsize+1; i<= idealsize+n ; i++){
+		A[i] = 0:n;		//describes the transformation of the variables
+		B[i] = -1:n;
+		C[i] = 0:n;
+		for(j = 1;j<=n; j++){
+			if(j == i-idealsize){
+				C[i][j]=1;
+			}
+		}
+		E[i] = 0:n;
+	}
+
+	//init vectors Ci for polynomial j in I 
+	for(j=1; j<=idealsize; j++) {
+		for(i=1; i<= n; i++) {
+			if (B[j][i] >= 0){ 		//I[j]is polynomial
+				minimum = min(A[j][i],B[j][i]);
+				C[j][i] = minimum;
+				A[j][i] = A[j][i]-minimum;
+				B[j][i] = B[j][i]-minimum;
+			}
+		}
+	}
+		
+	list L;
+	L[1] = list();
+	L[1][1] = list(A,B,C,E);										//lists of exponents of the generators and ringvariables
+	L[1][2] = compute_invariants(L[1][1],1);						//invariants
+	
+	list Center = compute_center(L[1], 1, mode);
+	L[1][3] = list(Center);
+	minimum = calculate_minimum(L[1],1);
+	L[1][3] = list(Center,minimum);									//Center and minimum								
+	intmat path[2][1] = 0,-1; 										//path of the current chart
+	L[1][4] = path;
+
+	return(L);
+}
+example
+{ "EXAMPLE:"; echo = 2;
+  ring r=integer,(x(1..7)),lp;
+  poly f = x(1)^2*x(4)-x(3)^3*x(5)^6; 
+  poly g = x(7)^10*x(2)^2-x(4)^7*x(7)^12;
+  ideal J = ideal(f,g);
+  ideal I = ideal(f);
+  init_lists(I,3);
+}
+
+///////////////////////////////////////////////////////////////////////////////
+//before start this method: you should compute the center of next blow up!!
+proc fill_lists_for_next_charts(list activeList, int number_active_chart)
+"USAGE: proc fill_lists_for_next_charts(list activeList, int number_active_chart); activeList is the current chart ant number_active_chart its number 
+RETURN: List successorlist; which copies the data of activeList in the successorcharts with adaption on pathmatrice
+number of successors is computed with relation to center which is written in activeList.
+		
+EXAMPLE: example fill_lists_for_next_charts; shows an example
+"{
+	list successorlist = list();
+	list A = activeList[1][1];
+	list B = activeList[1][2];
+	list E = activeList[1][4];
+	list Center = activeList[3][1];
+	
+	list allCenterComp = Center[1]+Center[2];
+	int NumbOfSuccessors = size(allCenterComp);
+
+	if(size(Center[1]) == 0 && size(Center[2]) == 0){
+		return(successorlist);																		//emptylist
+	}
+		
+	intmat path = activeList[4];
+	int numb_predecessor = ncols(path);
+	intmat new_path [2][numb_predecessor+1];
+	int i; int j;
+	
+	//fill path in successor_chart
+	for (i=1;i<=2; i++){
+		for(j=1;j<=numb_predecessor; j++){
+			new_path[i,j] = path[i,j];	
+		}
+	}
+	new_path[1,numb_predecessor+1] = number_active_chart;
+		
+	// construct successorlist
+	for(i=1; i<= NumbOfSuccessors; i++){
+		successorlist[i] = activeList;
+		new_path[2,numb_predecessor+1] = i;
+		successorlist[i][4] = new_path;
+	}
+	
+	return(successorlist);
+}
+
+///////////////////////////////////////////////////////////////////////////////
+proc ideal_to_list(ideal I)
+"USAGE: ideal_to_list(ideal I); I = <fi> = <x^Ci(x^Ai+-x^Bi)> polynomialIdeal for i>=1 
+RETURN: List L:
+		L[1] represents the data of I as the chart data in a list L[i]:
+		
+EXAMPLE: ideal_to_list; shows an example
+"{
+int n = nvars(basering);
+	int i; int j;
+	int idealsize = ncols(I);	
+	int minimum;	
+
+	list A;					
+	list B;										
+	list C;
+	list E; 		
+	
+	//init vectors A and B for each polynomial in I:
+	for (i = 1; i<= idealsize; i++){
+		if (size(I[i])==1){							// I[i] is monomial
+			A[i] = 0:n;
+			B[i] = -1:n;
+			C[i] = leadexp(I[i]);
+		} else {									// I[i] is polynomial
+			A[i] = leadexp(I[i]);
+			B[i] = leadexp(I[i]-lead(I[i]));
+			C[i] = 0:n;
+		}
+		E[i] = 0:n;		// TODO!!!
+	}
+	// last n indices describes the ideal of ringvariables			//TODO: Auslagern in L[i][8]
+	//transformation of ringvariables
+	for(i = idealsize+1; i<= idealsize+n ; i++){
+		A[i] = 0:n;		//describes the transformation of the variables
+		B[i] = -1:n;
+		C[i] = 0:n;
+		for(j = 1;j<=n; j++){
+			if(j == i-idealsize){
+				C[i][j]=1;
+			}
+		}
+		E[i] = 0:n;		// TODO !!!
+	}
+
+	//init vectors Ci for polynomial j in I 
+	for(j=1; j<=idealsize; j++) {
+		for(i=1; i<= n; i++) {
+			if (B[j][i] >= 0){ 		//I[j]is polynomial
+				minimum = min(A[j][i],B[j][i]);
+				C[j][i] = minimum;
+				A[j][i] = A[j][i]-minimum;
+				B[j][i] = B[j][i]-minimum;
+			}
+		}
+	}
+		
+	list L;
+	L[1] = list(A,B,C,E);
+	return(L);					
+}
+example
+{ "EXAMPLE:"; echo = 2;
+  ring r=integer,(x(1..7)),lp;
+  poly f = x(1)^2*x(4)-x(3)^3*x(5)^6; 
+  poly g = x(1)*(x(7)^10*x(2)^2-x(4)^7*x(7)^12);
+  ideal J = ideal(f,g);
+  ideal I = ideal(f);
+  ideal_to_list(J);
+}
+proc list_to_ideal(list L)
+"USAGE: list_to_ideal(list L); L[i] like in the data of the blowing up charts L[i]
+RETURN: ideal I corresponding to the data of L[1]
+		
+EXAMPLE: list_to_ideal; shows an example
+"{
+	list A = L[1][1];
+	list B = L[1][2];
+	list C = L[1][3];
+	list E = L[1][4];		//TODO!!!
+	
+	int idealsize = size(A);
+	int n = nvars(basering);
+	poly f1 = 1;
+	poly f2 = 1;
+	ideal I;
+	int i; int index;
+	
+	for (index=1; index<= idealsize; index++){
+		f1=1;
+		f2=1;
+		if(B[index][1] >=0){			//else: monomial for the variables
+			for (i=1; i<=n;i++){
+				if(A[index][i]!=0){
+					f1 = f1 * var(i)^(A[index][i]);
+				}
+				if(B[index][i]!=0){
+					f2 = f2 * var(i)^(B[index][i]);
+				}
+				//if(C[index][i]!=0){
+				//	f1 = f1 * var(i)^(C[index][i]);
+				//	f2 = f2 * var(i)^(C[index][i]);
+				//}		
+			}
+			I[size(I)+1] = f1-f2;
+		}
+	}
+	
+	return(I);	
+}
+example
+{ "EXAMPLE:"; echo = 2;
+  ring r=integer,(x(1..7)),lp;
+  poly f = x(1)^2*x(4)-x(3)^3*x(5)^6; 
+  poly g = x(1)*(x(7)^10*x(2)^2-x(4)^7*x(7)^12);
+  ideal J = ideal(f,g);
+  ideal I = ideal(f);
+  list L = ideal_to_list(J,3);
+  list_to_ideal(L[1]);
+}
+
+
+///////////////////////////////////////////////////////////////////////////////
+//only method which really depends on the mode:
+proc compute_center(list L, int index, int mode)
+"USAGE: compute_center(list L, int index); I[1] = f = x^C(x^A+-x^B) polynomial 
+RETURN: list Center of next blowup where Center[1] contains components of A and Center[2] contains components of B
+		and list(list(),list()), if there is no next blowup.
+"{
+	list A = L[1][1];
+	list B = L[1][2];
+	list C = L[1][3];
+	list E = L[1][4];
+	int n = nvars(basering);
+
+	list Center = list();
+	Center[1] = list();
+	Center[2] = list();
+	
+	int a_max = 0; int b_max = 0;										
+	int i; int j;
+	int minimum;	
+	
+	list position_of_ones_A = list();		//for mode = 4 in order to find oldest element of exc. div.
+	list position_of_ones_B = list();
+	int oldest_A_val = n+1;						//in order to be able to calculate minimum of oldest_A and elements of position_of_ones_A
+	int oldest_B_val = n+1;
+	int tmp_A_val;
+	int tmp_B_val;
+	int oldest_A_pos = 0;					//position of oldest component
+	int oldest_B_pos = 0;
+	int tmp_A_pos;	
+	int tmp_B_pos;	
+	
+	int sum_of_A = 0;
+	int sum_of_B = 0;
+	int tmp_sum_of_B;
+	list TmpCenter;
+	int ready = 0;
+	
+	if(mode != 1){
+		//Calculate invariants and maxima of A[index] and B[index] 
+		for( i=1; i<=n; i++) {					//only actual polynomial is important for calculation of center
+			if (a_max < 2 && A[index][i] == 1){	// only needed if we need exceptional components in mode == 4
+				position_of_ones_A[size(position_of_ones_A)+1] = i;
+			}
+			if(A[index][i] > a_max) {			
+				Center[1] = list(i);
+				a_max = A[index][i];
+				if(a_max > 1){
+					position_of_ones_A = list();
+				}
+			}
+			if (b_max < 2 && B[index][i] == 1){
+				position_of_ones_B[size(position_of_ones_B)+1] = i;
+			}
+			if(B[index][i] > b_max) {
+				Center[2] = list(i);
+				b_max = B[index][i];
+				if(b_max >1){
+					position_of_ones_B = list();
+				}
+			}		
+		}
+	
+		//in mode == 2,3,4
+		minimum = min(a_max,b_max);	
+		if(minimum < 0) {
+			print("Warning: minimum < 0 ");
+			return(list(list(),list()));
+		}
+
+		if(minimum == 0) {
+			return(list(list(),list()));
+		}
+		if(size(Center[1]) == 0 or size(Center[2]) == 0){
+			return(list(list(),list()));
+		}
+		
+		if(minimum == 1){
+			if(size(position_of_ones_A) == 1 or size(position_of_ones_B) == 1){		//min (|A|,|B|) ==1
+				if(size(position_of_ones_A)==1 && a_max == 1){									// only if |A| == 1
+					if(C[index][position_of_ones_A[1]] == 0){
+						return(list( list(), list()));
+					}
+				}
+				if(size(position_of_ones_B)==1 && b_max == 1){									// only if |B| == 1
+					if(C[index][position_of_ones_B[1]] == 0){
+						return(list( list(), list()));
+					}
+				}
+			}
+		}
+	}	
+
+	if(mode == 5){
+		return(maxordCenter_mindeg(L,index));
+	}
+	
+	if (mode != 1 && mode != 2){
+		if (minimum == 1){
+			if(mode == 4){												//blow up only with Centers in the preimage of singular locus
+				if(E[index][Center[1][1]] != 0 or E[index][Center[2][1]] != 0){
+					return(Center);										//V(x1,x2) in div(y1....ym)
+				}	
+			}
+			//Constr. 2.15
+			if(a_max == 1 && b_max > 1){ 
+				if(size(Center[1]) <= 1){											//non-singular	
+					
+					for(i=1; i<=n; i++) {								// find second component of center
+						if(A[index][i] == a_max && i!= Center[1][1]){
+							Center[1][2] = i;							//first component is even filled and there should not be more than 2 components
+						}
+					}
+					
+				}
+			}
+			
+			if(a_max > 1 && b_max == 1){
+				for(i=1; i<=n; i++) {							// find second component of center
+					if(B[index][i] == b_max && i != Center[2][1]){
+						Center[2][2] = i;
+					}
+				}
+			}
+			
+			if(a_max == 1 && b_max == 1){
+				for(i=1; i<=n; i++) {							// find second component of center
+					if(A[index][i] == a_max && i != Center[1][1]){
+						Center[1][2] = i;
+					}
+					if(B[index][i] == b_max && i != Center[2][1]){
+						Center[2][2] = i;
+					}
+				}
+
+				if(size(Center[1]) <= 1 or size(Center[2]) <= 1 ){			//min |A|, |B| == 1
+					Center[1] = list(Center[1][1]);
+					Center[2] = list(Center[2][1]);
+					return(Center);
+				}
+				
+				
+				
+			}
+		}
+	}
+	
+	// MaxOrd centers
+	if(mode == 1){
+
+		for(i = 1; i<= n; i++){								//calculate |A| and |B| for checking whats bigger
+			if(A[index][i] > 0){
+				sum_of_A = sum_of_A + A[index][i];
+				Center[1][size(Center[1])+1] = i;			//init center
+			}
+			if(B[index][i] > 0){
+				sum_of_B = sum_of_B + B[index][i];
+				Center[2][size(Center[2])+1] = i;
+			}
+		}			//if |A| = |B|, than Center[1] and Center[2] at this point are correctly computed and would be return later in this method
+		
+		if(size(Center[1]) == 0 or size(Center[2]) == 0 ){	// no resolution needed
+			return(list(list(),list()));
+		}
+		
+		if(min(sum_of_A,sum_of_B)==1){
+			if(sum_of_A == 1){
+				if (C[index][Center[1][1]] == 0){
+					return(list(list(),list()));
+				}
+			}
+			if(sum_of_B == 1){
+				if (C[index][Center[2][1]] == 0){
+					return(list(list(),list()));
+				}
+			}
+		}
+		
+		if(sum_of_A < sum_of_B){							// case |A| < |B|
+			sum_of_B = 0;
+			Center[2] = list();
+
+			for(i=1; i<=n; i++){							// sum up b_i untill sum(b_i) >|A|
+				if(B[index][i] > 0){
+					sum_of_B = sum_of_B + B[index][i];
+					TmpCenter[size(TmpCenter)+1] = i;
+					if(sum_of_B >= sum_of_A){
+						break;
+					}
+				}
+			}
+		
+			for(i = 1; i<=size(TmpCenter); i++){				//check whether there is a not important b_i in TmpCenter
+				if((sum_of_B - B[index][TmpCenter[i]]) >= sum_of_A){
+					sum_of_B = sum_of_B - B[index][TmpCenter[i]];
+					TmpCenter[i] = 0;						// delete useless b_i
+				}
+			}
+			for(i=1; i<=size(TmpCenter); i++){				//fill center with needed b_i from TmpCenter
+				if(TmpCenter[i] != 0){
+					Center[2][size(Center[2])+1] = TmpCenter[i];	
+				}
+			}
+			if(size(Center[2]) == 0){
+				return(list(list(),list()));
+			}
+		} 
+		if(sum_of_B < sum_of_A){							// case |B| < |A|
+			sum_of_A = 0;
+			Center[1] = list();
+
+			for(i=1; i<=n; i++){
+				if(A[index][i] > 0){
+					sum_of_A = sum_of_A + A[index][i];	
+					TmpCenter[size(TmpCenter)+1] = i;
+					if(sum_of_A >= sum_of_B){
+						break;
+					}
+				}
+			}
+		
+			for(i = 1; i<=size(TmpCenter); i++){
+				if((sum_of_A - A[index][TmpCenter[i]]) >= sum_of_B){	
+					sum_of_A = sum_of_A - A[index][TmpCenter[i]];
+					TmpCenter[i] = 0;
+				}
+			}
+			for(i=1; i<=size(TmpCenter); i++){
+				if(TmpCenter[i] > 0){
+					Center[1][size(Center[1])+1] = TmpCenter[i];	
+				}
+			}
+			if(size(Center[1]) == 0){
+				return(list(list(),list()));
+			}
+		}
+		//else: |A| == |B| is calculated automatically
+	}
+
+	return(Center);
+}
+///////////////////////////////////////////////////////////////////////////////
+proc compute_invariants(list activeList, int index)
+"USAGE: compute_invariants(list activeList, int index); activeList: chart of blowUp, index: number of polynomial which defines the invariant calculation
+RETURN: list of invariants: 
+	a_max: max entry in list A[index],
+	counter_a_max: number of entries equal to a_max,
+	b_max: max entry in list B[index], 
+	counter_b_max: number of entries equal to b_max
+"{
+	int i;
+	
+	list A = activeList[1];
+	list B = activeList[2];
+	int n = size(A[1]);
+	int a_max = 0; int b_max = 0;
+	int counter_a_max = 0; int counter_b_max = 0;
+	
+	for (i=1; i<=n; i++){
+		if(A[index][i] >= a_max){
+			if(A[index][i]>a_max){
+				a_max = A[index][i];
+				counter_a_max = 1; 
+			} else{
+				counter_a_max++;
+			}
+		} 
+		if(B[index][i] >= b_max){
+			if(B[index][i]>b_max){
+				b_max = B[index][i];
+				counter_b_max = 1;
+			} else{
+				counter_b_max++;
+			}
+		}
+	}
+	return (list(a_max, counter_a_max, b_max, counter_b_max));
+}
+///////////////////////////////////////////////////////////////////////////////
+
+proc calculate_minimum(list L, int index)
+"USAGE: calculate_minimum(list L, int index);  
+RETURN: minimum of Polynom with number index at Positions of Center
+		
+EXAMPLE: example calculate_minimum; shows an example
+"{ 	
+	list A = L[1][1];
+	list B = L[1][2];
+	list Center = L[3][1];
+	list allCenterComp = Center[1] + Center[2];
+	
+	int minimum; 
+	int i;	
+	int sum_of_A = 0;
+	int sum_of_B = 0;
+
+	for(i=1; i<=size(allCenterComp); i++){	
+		if( A[index][allCenterComp[i]] != 0){
+			sum_of_A = sum_of_A + A[index][allCenterComp[i]];
+		} else{
+			sum_of_B = sum_of_B + B[index][allCenterComp[i]];
+		}
+	}
+
+	minimum = min(sum_of_A,sum_of_B);
+	return(minimum);
+}
+
+///////////////////////////////////////////////////////////////////////////////
+proc transformation(list activeList, int index, int mode)
+"USAGE: transformation(list activeList, int index, int mode); 
+	activeList: chart of blowUp, 
+	index: number of polynomial which defines the center, 
+	mode: mode of blowUp
+RETURN: minimum of Polynom with number index at Positions of Center
+"{ 	
+
+	int n = nvars(basering);
+	int j; int i; int k;
+	list returnList = list();
+
+	//read data
+	list A = activeList[1][1];
+	list B = activeList[1][2];
+	list C = activeList[1][3];
+	list E = activeList[1][4];
+	
+	list Center = activeList[3][1];
+	list allCenterComp = Center[1] + Center[2];			// Center 1 concat Center 2
+	
+	int minimum_old = activeList[3][2];
+	int centervalue_old;
+	int minimum;
+	int idealsize = size(A);			//ideal generators and monomials for the variables of the ring
+
+	if(size(Center[1]) == 0 or size(Center[2]) == 0 ){
+		print("transformation without a center");
+		return(list());
+	}
+	if(minimum_old <= 0){
+		print("minimum <= 0");
+		return(list());
+	}
+	
+	intmat path = activeList[4];
+	i = path[2,ncols(path)];
+	int age = ncols(path);			// age of exceptional divisor in order to find in center calculation the oldest exc div variable
+	
+
+	list comp_of_A = list();	
+	list comp_of_B = list();
+	int sum_of_A = 0;
+	int sum_of_B = 0;
+	
+	//Start of computation in charts:
+	for (j=1; j <= idealsize; j++){
+		comp_of_A = list();	
+		comp_of_B = list();
+		sum_of_A = 0;
+		sum_of_B = 0;
+		
+		for(k = 1; k<= size(allCenterComp); k++){
+			if(A[j][allCenterComp[k]]>0){
+				comp_of_A[size(comp_of_A)+1] = k;
+				sum_of_A = sum_of_A + A[j][allCenterComp[k]]; 
+			} else {
+				comp_of_B[size(comp_of_B)+1] = k;
+				sum_of_B = sum_of_B + B[j][allCenterComp[k]];
+			}
+		}
+		minimum = min(sum_of_A,sum_of_B);
+		
+		//main computation:
+		if(B[j][1] >= 0){								//else ideal describing a variable
+			A[j][allCenterComp[i]] = sum_of_A - minimum;
+			B[j][allCenterComp[i]] = sum_of_B - minimum;
+		} else{
+			minimum = 0;	
+		}
+		
+		centervalue_old = C[j][allCenterComp[i]];
+		C[j][allCenterComp[i]] = 0;
+		for (k = 1; k <= size(allCenterComp); k++){
+			if(allCenterComp[k] != 0){
+				C[j][allCenterComp[i]] = C[j][allCenterComp[i]] + C[j][allCenterComp[k]]; 
+			}
+		}	
+		C[j][allCenterComp[i]] = centervalue_old + C[j][allCenterComp[i]] + minimum;			//minimum != 0?
+		if(E[j][allCenterComp[i]] == 0 && minimum != 0){
+			E[j][allCenterComp[i]] = age;
+		}
+	}
+		
+	returnList[1] = list(A,B,C,E);
+	returnList[2] = compute_invariants(list(A,B), index);
+	Center = compute_center(returnList, index, mode);
+	returnList[3] = list(Center);
+	minimum = calculate_minimum(returnList, index);
+		
+	returnList[3] = list(Center,minimum);
+	returnList[4] = activeList[4];
+	
+	return(returnList);
+}
+
+///////////////////////////////////////////////////////////////////////////////
+proc isEndChartInActivePolynomial(list activeList, int index,int mode)
+"USAGE: isEndChartInActivePolynomial(list activeList, int index, int mode);
+RETURN: 1 if activeList is an endchart e.g. because minimum equals zero or y-x^A and y exceptional; 0 otherwise
+"{
+	list A = activeList[1][1];
+	list B = activeList[1][2];
+	list C = activeList[1][3];
+	list E = activeList[1][4];
+	list invariants = activeList[2];
+	int minimum = activeList[3][2];
+	
+	int n = nvars(basering);
+	int i; int k;
+		
+	list Center = compute_center(activeList, index, mode);
+	if (size(Center[1]) == 0 && size(Center[2]) == 0){
+		return(1);
+	}
+
+	
+	/*if(minimum == 1){
+		if(invariants[1] == 1 && invariants[2] == 1 && (invariants[3] >1 or invariants[4] > 1) ){				// A contains only one 1 ; f = ...(y-x^B)  
+			for(i=1; i<=n; i++){										//find position i of the one entry; find y
+				if(A[i] == 1){
+					if(C[i] == 0){									// y is not outside (...)
+						for(k=((index-1)*n+1); k <= n*index; k++){							// find xk outside and inside xk(y - xk* X^B)
+							if(C[k] >=0 && B[k] > 0){
+								return(1);
+							}
+						}
+					}
+					if(C[i] > 0){									// y(y-X^B) or y*X^C(y-X^B)
+						return(0);
+					}
+				}
+			}
+		}
+				
+		// the symmetric case for  B contains only one 1 ; f = ...(x^A-y)  
+		if(invariants[3] == 1 && invariants[4] == 1 && (invariants[1] >1 or invariants[2] > 1)){				// B contains only one 1 ; f = ...(x^A-y)  
+			for(i=((index-1)*n+1); i <= n*index; i++){										//find position of one; find y
+				if(B[i]==1){
+					if(C[i] == 0){															// y is not exceptional
+						for(k=((index-1)*n+1); k <= n*index; k++){							// find xk outside and inside xk(xk*X^B - y)
+							if(C[k] >=0 && A[k] > 0){
+								return(1);
+							}
+						}
+					}
+					if(C[i] > 0){									// y(X^A-y) or y*X^C(X^A-y)
+						return(0);
+					}
+				}
+			}
+		}
+		
+		
+		if(invariants[1] == 1 && invariants[2] == 1 && invariants[3] == 1 && invariants[4] == 1){
+			for(i = ((index-1)*n+1); i <= n*index; i++){
+				if(A[i] == 1){
+					for( k=((index-1)*n+1); k <= n*index; k++){							// find xk outside and inside y*xk(y - xk)
+						if(C[i] > 0 && C[k] > 0 && B[k] > 0){
+							return(0);
+						}
+					}
+				}
+			}
+			return(1);													//y(y-xk)
+		}		
+	}*/
+		
+	return(0);
+}
+///////////////////////////////////////////////////////////////////////////////
+proc isEndChartForEveryPolynomial(list activeList,int mode)
+"USAGE: isEndChartForEveryPolynomial(list activeList,int mode); activeList: chart of blowUp, mode: mode of blowUp
+RETURN: 1 if activeList is an endchart; 0 otherwise
+"{
+	list A = activeList[1][1];
+	list B = activeList[1][2];
+
+	int i;
+	int n = nvars(basering);
+	int NumbOfIndices = size(A) - n;				//last n indices describing the ideal of ringvariables 
+	
+	for( i=1; i <= NumbOfIndices; i++){
+		if(StopCriterion(activeList, i, mode) == 0 ){
+			return(0);
+		}
+	}
+	
+	return(1);
+}
+///////////////////////////////////////////////////////////////////////////////
+proc StopCriterion(list activeList, int index, int mode)
+"USAGE: StopCriterion(list activeList, int index, int mode); activeList: chart of blowUp, index: number of polynomial which defines the center, mode: mode of blowUp
+RETURN: 1 if activeList is an endchart of polynomial with number index; 0 otherwise
+"{
+	list Center = compute_center(activeList, index, mode);
+//	if (Center[1] == 0 && Center[2] == 0 && Center[3] == 0 && Center[4] == 0 ){
+//		return(1);
+//	}	
+	if(size(Center[1]) == 0 && size(Center[2]) == 0){
+		return(1);
+	}
+	return(0);
+}
+///////////////////////////////////////////////////////////////////////////////
+proc AddReadableOutputToChart(list activeList)
+"USAGE: AddReadableOutputToChart(list activeList); activeList: chart of blowUp
+RETURN: a list of human readable polynomials of activeList 
+"{
+	list A = activeList[1][1];
+	list B = activeList[1][2];
+	list C = activeList[1][3];
+	
+	list returnList = list();
+	int n = nvars(basering);
+	int j; 	int index;
+	
+	poly xC = 1;
+	poly xAsubxB = 1;
+	poly xA = 1;
+	poly xB = 1;
+
+	int NumbOfIndices = size(A);				
+	
+	for(index = 1; index <= NumbOfIndices; index++){	
+		xC = 1;
+		xAsubxB = 1;
+		xA = 1;
+		xB = 1;		
+		for(j=1;j<= n;j++){
+			if(A[index][j] > 0){
+				xA= xA*(var(j)^A[index][j]);
+			}
+			if(B[index][j] > 0){
+				xB= xB*(var(j)^B[index][j]);
+			}
+			if(C[index][j] > 0){
+				xC= xC*(var(j)^C[index][j]);
+			}
+		}
+		
+		xAsubxB = xA - xB;
+		returnList[index] = list();
+		returnList[index][1] = xC;
+		returnList[index][2] = xAsubxB;	
+	}
+	return(returnList);
+}
+
+
+///////////////////////////////////////////////////////////////////////////////
+// ring R = 0,(x(21..99)),lp;     //!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!
+proc create_Ideal(int m)
+"USAGE: create_Ideal(int m)
+RETURN: ideal I
+		
+EXAMPLE: example create_Ideal; shows an example
+"{
+	ideal I;
+	int i; int j;
+	
+	for(i=2;i<=m;i++){
+		I[size(I)+1] = var(1) * ( var((i-2)*10+1)  - var ((i-2)*10+2) ); 				//x21(xi1-xi2) 
+	}
+	for(i = 3; i<=m;i++){
+		for (j=i;j<=m;j++){
+			I[size(I)+1] = var(2) * var((i-2)*10+1) * var((j-2)*10+1) - var(1) * var((i-2)*10+2)*var((j-2)*10+2);	//x22xi1xj1-x21xi2xj2
+		}
+	}
+	
+	
+	return(I);
+}
+example
+{ "EXAMPLE:"; echo = 2;
+   ring r=integer,(x(21..99)),lp;
+   I = create_Ideal(2);
+   I;
+   create_Ideal(5);
+   create_Ideal(9);
+}
+///////////////////////////////////////////////////////////////////////////////
+proc blowUp(ideal I, int mode)
+"USAGE: blowUp(ideal I); I[1] = f = x^C(x^A+-x^B) polynomial, mode: 1 -> maxord, 2-> codim2 ,mode:  3-> sing_loc  mode: 4 -> exc_sing_loc
+RETURN: List l:
+		L[i] represents the i-th chart of calculation in f
+		L[i][1] intvec of powers of f
+		L[i][2] list of invariants of f
+		L[i][3] list of (Center,minimum)
+		L[i][4] matrix of path of f
+		L[i][5] other polynomials fj in I
+		
+EXAMPLE: example blowUp; shows an example
+"{
+	//I = I+0;													//simplification of ideal to eliminate entries which equal zero and simplify <f,g,f,g,g,0,g> to <f,g> 
+	int NumbOfPoly = ncols(I);
+
+	list EndCharts;
+	int CounterEndCharts = 0;
+	int maxdegree;						//TODO
+	int runtime = rtimer;
+	
+	list L = init_lists(I,mode);										// list of charts
+	list Center = L[1][3][1];
+	int minimum = L[1][3][2];
+	int index = 1;												// indice of active polynomial
+	int AddedCharts = 0;
+
+	list duplicated_charts = list();								// for successor charts of later polynomials
+	
+	int j; int i=2; int k;
+	list successors = fill_lists_for_next_charts(L[1],1);
+	for(j=1; j<=size(successors); j++){
+		L[size(L)+1] = successors[j];
+	}
+	
+	//case: first polynomial dont need successor charts
+	while(size(L) == 1 && index <= NumbOfPoly){
+		index++;
+		L[1][3][1] = compute_center(L[1],index,mode);
+		successors = fill_lists_for_next_charts(L[1],index);
+		for(j=1; j<= size(successors); j++){
+			L[size(L)+1] = successors[j];
+		}
+	}
+	
+	// case: first chart has no successors
+	if(isEndChartForEveryPolynomial(L[1],mode) == 1){				
+		CounterEndCharts++;
+		EndCharts[size(EndCharts)+1] = 1;
+		L[1][5] = AddReadableOutputToChart(L[1]);
+	}
+	
+	int CurrentListSize = size(L);								// in order to duplicate endcharts for the next active polynomial
+
+	
+	//Start of blow up:
+	while(i<= size(L) && index <= NumbOfPoly){
+		Center = compute_center(L[i],index,mode);
+		L[i][3][1] = Center;
+		minimum = calculate_minimum(L[i], index);
+		L[i][3] = list(Center,minimum);
+		L[i] = transformation(L[i], index, mode);				// do the transformation
+			
+		if(isEndChartInActivePolynomial(L[i],index,mode) == 0){				//else: no more new charts
+			successors = fill_lists_for_next_charts(L[i],i);
+			for(k=1; k <= size(successors); k++){
+				L[size(L)+1] = successors[k];
+			}
+		}
+			
+		if(isEndChartForEveryPolynomial(L[i],mode) == 0 && isEndChartInActivePolynomial(L[i],index,mode) == 1){					// chart need successors in a later polynomial
+			duplicated_charts[size(duplicated_charts)+1] = list(L[i],i);	// L[i] and i in order to have a correct path matrix in successor chart
+		}
+							  	
+		if(isEndChartForEveryPolynomial(L[i],mode) == 1){					// chart doesnt need successors
+			CounterEndCharts++;
+			EndCharts[size(EndCharts)+1] = i;
+		}	
+			
+		L[i][5] = AddReadableOutputToChart(L[i]);
+		
+		if (i == size(L) ){						// do calculation with the next active polynomial
+												// duplicate listelements if we need them for later calculations in other active polynomials
+			CurrentListSize = size(L);
+			while(CurrentListSize == size(L) && index < NumbOfPoly){					//case: next polynomial need no successorcharts: goto next next polynomial
+				for(j = 1; j<= size(duplicated_charts); j++){
+					AddedCharts = 0;
+					if(typeof(duplicated_charts[j][1]) != typeof(0)){ 					// else:chart was deleted before
+						if(isEndChartInActivePolynomial(duplicated_charts[j][1],index,mode) == 1 ){
+							
+							duplicated_charts[j][1][3][1] = compute_center(duplicated_charts[j][1],index+1,mode);		
+							successors = fill_lists_for_next_charts(duplicated_charts[j][1],duplicated_charts[j][2]);
+							AddedCharts = size(successors);
+							
+							if(AddedCharts != 0 ){
+								for(k=1; k<=size(successors); k++){
+									L[size(L)+1] = successors[k];
+								}
+								duplicated_charts[j][1] = 0;		//delete chart 
+							}
+						} 
+					}
+				}
+				index++;
+			}
+			i = CurrentListSize;								// start calculation on next active polynomial in chart number size(L)+1 (size before adding duplicated charts)
+			//i = 1;											// no calculations in chart 1, but after this line: "i++"
+		}
+		i++;
+	}
+	
+	return(list(L, CounterEndCharts, EndCharts, rtimer-runtime));
+}
+example
+{ "EXAMPLE:"; echo = 2;
+ 
+  ring r=integer,(x11,x21,x22,x31,x32,x33,x41,x42,x51,x52),lp;
+  poly f = x21*(x21-x22);
+  ideal I0 = ideal(f);		// m=0
+
+  poly g = x21*(x31-x32);
+  poly h = x22*x31^2-x21*x32^2;
+  ideal I1 = ideal(g,h);	//m=1
+  
+  poly f1 = x21*(x41-x42);
+  poly f2 = x22*x31*x41-x21*x32*x42;		
+  poly f3 = x22*x41^2-x21*x42^2;
+  ideal I2 = ideal(f1,f2,f3);	//m=2
+  
+  poly g1 = x21*x51 - x21*x52;
+  poly g2 = x22* x31*x51 - x21*x32*x52;
+  poly g3 = x22* x41*x51 - x21*x42*x52;
+  poly g4 = x22*x51*x51 - x21*x52*x52;
+  ideal I3 = ideal(g1,g2,g3,g4);	//m=3
+  
+  poly h1 = x22*x31*x31 - x21*x32*x32;
+  poly h2 = x22*x31*x41-x21*x32*x42;
+  poly h3 = x22*x31*x51-x21*x32*x52;
+ 
+  //ideal I = ideal(I0+I1);    //m=1
+  ideal I = ideal(I0+I1+I2); //m=2
+  //ideal I = ideal(I0+I1+I2+I3);
+  blowUp(I,2);
+}
+
+
+///////////////////////////////////////////////////////////////////////////////
+
+/////////////////////// maxOrd-Testmethoden ///////////////////////////////////
+
+///////////////////////////////////////////////////////////////////////////////
+LIB "maxord.lib";
+proc maxordCenter_mindeg(list activeList,int index){ 
+	list A = activeList[1][1];
+	list B = activeList[1][2];
+	list Center = list(list(),list());
+	poly f = list_to_ideal(activeList)[1];
+	list MaxOrdComputation = MaxOrd(ideal(0),ideal(f));
+	list MaxOrdList = MaxOrdComputation[3]; 
+	if(MaxOrdComputation[1] < 1){
+		return(Center);
+	}
+	
+	ideal MaxOrdIdeal = ideal(1);
+	int i; int j;int flag = 1; int minsum = 0;
+
+	list ExpOfMaxOrd = list();
+	int NumbOfVariables = size(A[1]);
+	
+	for(i=1; i<= size(MaxOrdList);i++){
+		ExpOfMaxOrd[i] = list();
+		ExpOfMaxOrd[i][1] = leadexp(0);
+		
+		
+		//if MaxOrd = V(x,y,z)
+		for(j=1; j<= ncols(MaxOrdList[i]); j++){
+			//if MaxOrd = V(w^2-v)
+			if(MaxOrdList[i][j] - lead(MaxOrdList[i][j]) == 0){
+				ExpOfMaxOrd[i][1] = ExpOfMaxOrd[i][1] + leadexp(MaxOrdList[i][j]);
+				if(lead(MaxOrdList[i][j]) > 0){
+					MaxOrdList[i][j] = MaxOrdList[i][j] - lead(MaxOrdList[i][j]);
+				}else{
+					MaxOrdList[i][j] = MaxOrdList[i][1] + lead(MaxOrdList[i][j]);
+				}
+			} else{
+				return(compute_center(activeList, index, 3));	//else return CoDim 2 center
+			}
+		}
+		
+		if(minsum == 0){
+			minsum = sum(ExpOfMaxOrd[i][1]);
+			flag = i;
+		} else{
+			if( sum(ExpOfMaxOrd[i][1]) < minsum){
+				minsum = sum(ExpOfMaxOrd[i][1]);
+				flag = i;				
+			}
+		}
+	}
+
+	for(j=1; j<=NumbOfVariables; j++){
+		if(ExpOfMaxOrd[flag][1][j] > 0){								// Variable of the center
+			if(A[index][j] >= 1){
+				Center[1][size(Center[1])+1] = j;
+			}
+			if(B[index][j] >= 1){
+				Center[2][size(Center[2])+1] = j;
+			}
+		}
+	}
+	if(size(Center[1]) == 0 or size(Center[2])== 0){
+		print("Something is wrong in Calculation of Center maxord_mindeg");
+		return(list(list(),list()));
+	}
+
+	return(Center);
+}
+
+
+
+proc test_maxord(int binomialcount,int maxdegree)
+"USAGE: test_algorithms(int binomialcount, int maxdegree);
+RETURN: nothing
+	writes in four seperated files the test data: polynomial, number of endcharts, number of charts and the runtime
+	random polynomial could have a maximum degree of maxdegree 		
+EXAMPLE: example create_Ideal; shows an example
+"{
+	link l1 = ":w Testfaelle/tests_maxord_kombi.txt";
+	link l2 = ":w Testfaelle/tests_maxord_mindeg.txt";
+
+	list linklist = list(l1,l2);
+	int i; int j;
+	poly f;
+	list blowuplist;
+	
+	list sum_runtime = list(0,0);
+
+	
+	
+	//Test binomial-calculations:
+	for(j=1;j<=binomialcount;j++){
+		f = create_test_binomial(maxdegree);
+		for(i = 1;i<=size(linklist);i++){
+			blowuplist = blowUp(f,i+3);
+			
+			while(blowuplist[2] == 1 and i == 1){			//only test binomial if we need any blowups
+				f = create_test_binomial(maxdegree);
+				blowuplist = blowUp(f,i+3);
+			}
+			
+			//fprintf(linklist[i],"binomial: %l	endcharts: %s	charts: %s	runtime: %s",f,blowuplist[2],size(blowuplist[1]),blowuplist[4]);	
+			fprintf(linklist[i],"%s:	binomial: %s	endcharts: %s	charts: %s	runtime: %s",j,f,blowuplist[2],size(blowuplist[1]),blowuplist[4]);	
+			// only for later stats calculations:
+			sum_runtime[i] = sum_runtime[i] + blowuplist[4];
+		}
+	}
+		
+	//compute average values:
+	list average_runtime 	= list(sum_runtime[1] div binomialcount, sum_runtime[2] div binomialcount); 
+	
+	//compute the stats:
+	for(i = 1;i<=size(linklist);i++){
+		fprintf(linklist[i],"average-runtime: %s",average_runtime[i]);	
+	}
+	
+	//close files:
+	close(l1);
+	close(l2);
+}
+
+
+
+
+///////////////////////////////////////////////////////////////////////////////
+
+/////////////////////// Test-Methoden /////////////////////////////////////////
+
+///////////////////////////////////////////////////////////////////////////////
+
+
+
+proc create_test_binomial(int maxdegree, int mode) //mode == 1 symmetric sum of exponents; mode == 2 asymmetric sum of exponents; mode == 3 monomials have the same degree
+"USAGE: create_test_binomial(int maxdegree);
+RETURN: polynomial f, which is a binomial f = x^A-x^B;
+		
+EXAMPLE: example create_Ideal; shows an example
+"{
+	ideal tmp_maxideal;
+	int i; int j;
+	poly f;
+	
+	if(mode ==1){
+		i = random(1, maxdegree);
+		tmp_maxideal = maxideal(i);
+		j = random(1,size(tmp_maxideal));			//j = x^A
+	
+		f = tmp_maxideal[j];	
+	
+		i = random(1, maxdegree);
+		tmp_maxideal = maxideal(i);
+		j = random(1,size(tmp_maxideal));			//j = x^B
+	}
+	if(mode == 2){
+		i = random(maxdegree div 2, maxdegree);
+		tmp_maxideal = maxideal(i);
+		j = random(1,size(tmp_maxideal));			//j = x^A
+	
+		f = tmp_maxideal[j];	
+	
+		i = random(1, maxdegree div 2);
+		tmp_maxideal = maxideal(i);
+		j = random(1,size(tmp_maxideal));			//j = x^B
+	
+	}
+	if(mode == 3){
+		i = random(maxdegree div 2, maxdegree);
+		tmp_maxideal = maxideal(i);
+		j = random(1,size(tmp_maxideal));			//j = x^A
+	
+		f = tmp_maxideal[j];	
+		j = random(1,size(tmp_maxideal));			//j = x^B
+	
+	}
+	
+	
+	f = f - tmp_maxideal[j];
+	return(f);
+}
+example
+{ "EXAMPLE:"; echo = 2;
+
+	ring R = 0,(x,y,z,u,v,w),dp;	//works in char(R) = p, too
+	create_test_binomial(15);
+}
+
+proc test_algorithms(int binomialcount,int maxdegree, int mode) //mode == 1 symmetric sum of exponents
+"USAGE: test_algorithms(int binomialcount, int maxdegree, int mode);
+RETURN: nothing
+	writes in four seperated files the test data: polynomial, number of endcharts, number of charts and the runtime
+	random polynomial could have a maximum degree of maxdegree 		
+EXAMPLE: example create_Ideal; shows an example
+"{
+	link l4 = ":w Testfaelle/tests_exc_div.txt";
+	link l3 = ":w Testfaelle/tests_sing_loc.txt";
+	link l2 = ":w Testfaelle/tests_monomial.txt";
+	link l1 = ":w Testfaelle/tests_maxord.txt";
+	
+	list linklist = list(l1,l2,l3,l4);
+	int i; int j;
+	poly f;
+	list blowuplist;
+	
+	list sum_runtime = list(0,0,0,0);
+	list sum_endcharts = list(0,0,0,0);
+	list sum_charts = list(0,0,0,0);
+	
+	
+	//Test binomial-calculations:
+	for(j=1;j<=binomialcount;j++){
+		f = create_test_binomial(maxdegree, mode);
+		for(i = 1;i<=size(linklist);i++){
+			blowuplist = blowUp(f,i);
+			
+			while(blowuplist[2] == 1 and i == 1){			//only test binomial if we need any blowups
+				f = create_test_binomial(maxdegree, mode);
+				blowuplist = blowUp(f,i);
+			}
+			
+			//fprintf(linklist[i],"binomial: %l	endcharts: %s	charts: %s	runtime: %s",f,blowuplist[2],size(blowuplist[1]),blowuplist[4]);	
+			fprintf(linklist[i],"%s:	binomial: %s	endcharts: %s	charts: %s	runtime: %s",j,f,blowuplist[2],size(blowuplist[1]),blowuplist[4]);	
+			// only for later stats calculations:
+			sum_runtime[i] = sum_runtime[i] + blowuplist[4];
+			sum_endcharts[i] = sum_endcharts[i] + blowuplist[2];
+			sum_charts[i] = sum_charts[i] + size(blowuplist[1]);
+		}
+	}
+	
+	
+	//compute average values:
+	list average_runtime 	= list(sum_runtime[1] div binomialcount, sum_runtime[2] div binomialcount, sum_runtime[3] div binomialcount, sum_runtime[4] div binomialcount); 
+	list average_endcharts 	= list(sum_endcharts[1] div binomialcount, sum_endcharts[2] div binomialcount, sum_endcharts[3] div binomialcount, sum_endcharts[4] div binomialcount);
+	list average_charts 	= list(sum_charts[1] div binomialcount, sum_charts[2] div binomialcount, sum_endcharts[3] div binomialcount, sum_endcharts[4] div binomialcount);
+	
+	//compute the stats:
+	for(i = 1;i<=size(linklist);i++){
+		fprintf(linklist[i],"average-endcharts: %s	average-charts: %s	average-runtime: %s",average_endcharts[i],average_charts[i],average_runtime[i]);	
+	}
+	
+	//close files:
+	close(l1);
+	close(l2);
+	close(l3);
+	close(l4);
+}
+example
+{ "EXAMPLE:"; echo = 2;
+
+	ring R = 0,(x,y,z,u,v,w),dp;
+	test_algorithms(5,15,1);
+}

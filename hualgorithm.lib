@@ -1,0 +1,310 @@
+version=" "; // $Id$
+category=" ";
+info="
+LIBRARY:  hualgorithm.lib 
+AUTHOR:  Sabrina Alexandra Gaube, sabrina.gaube@uol.de
+
+PROCEDURES:
+	HuAlgorithm(M); Hu's centercalculation starting with a matrix M
+	ListForHU(M); converts Matrix with at most locally monomial entries of the form 1-x^A, x into a list
+	HuCalc (L); calculates a sequence of centers in the sence of the Hu algorithm
+	CalculateIntersectionLattice(L); calculates the intersection lattice of L as a list
+	CalculateIntersectionLatticeIdeal(IntersectionLattice[i][j]); calculates the ideal to a corresponding intersection lattice entry
+	
+	deleteEmptyIntersections(SubsetList, EmptySubsetIndices); list S... list E... where we want to delete sublists of S which contains entries of E as sublist
+	removeDuplicates(L); remove duplicate elements from a list L
+";
+
+LIB "maxord.lib";
+LIB "redcgs.lib";			//sublists
+LIB "primdec.lib";
+
+proc HuAlgorithm(matrix M)
+"USAGE: HuAlgorithm(matrix M); M matrix
+RETURN: the intersetion lattice of Hu's algorithm
+EXAMPLE: example HuAlgorithm; shows an example
+"
+{
+	list L;
+	L = ListForHU(M);
+
+	return(HuCalc(L));
+}
+example
+{ 	ring r = 0,(x,y),dp;
+	matrix M[1][5] = x-1,y-1,xy-1,1,xy-1;
+	HuAlgorithm(M);
+}
+
+
+proc ListForHU(matrix M)
+"USAGE: ListForHU(matrix M); M matrix
+RETURN: converts locally monomial entries of a matrix into a list without duplicates and without 1-entries
+EXAMPLE: example ListForHU; shows an example
+"
+{						
+	list L;
+	int i,j;
+
+	int ncol = ncols(M);
+	int nrow = nrows(M);
+	poly f;
+
+	for(i = 1;i<= nrow; i++){
+		for(j=1;j<=ncol; j++){
+			f = M[i,j];
+
+			if(MaxOrd(0,f)[1] == 1){					// f = 1-x^A or x
+				if(f != 1){		
+					L = AppendListToList(L,list(f));	//no duplicates
+				}
+			}else{
+				if(size(f) == 1 and f!= 1){
+					L = AppendListToList(L,list(f));	//no duplicates
+				}
+			}	
+		}
+	}
+
+	int sizeMinAss;
+	list MinAss;
+	int sizeL = size(L);
+														//change non-irreducible entries: [n]: xy-> [n]: x, [last]: y
+	for(j=1; j<=sizeL; j++){							// Do not change sizeL in the for-loops for not consider the newest elements
+		MinAss = minAssGTZ(L[j]);
+		sizeMinAss = size(MinAss);
+		if(sizeMinAss > 1){
+			L[j] = poly(MinAss[1][1]);
+			for(i=2; i<=sizeMinAss; i++){
+				L[size(L)+1] = poly(MinAss[i][1]);
+			}
+		}
+	} 
+	
+	
+	return(L);											
+}
+example
+{ "EXAMPLE:"; echo = 2;
+	ring r = 0,(x,y),dp;
+	matrix M[1][6] = x-1,y-1,xy-1,1,xy-1,xy;
+	ListForHU(M);
+}
+
+
+
+
+
+proc HuCalc (list L)
+"USAGE: HuCalc(list L); list L of locally monomials
+RETURN: Calculates the intersection Lattice in the sense of Hu
+EXAMPLE: example HuCalc; shows an example
+"
+{
+	list IntersectionLattice = CalculateIntersectionLattice(L);
+	list Centerlist = list();
+	int level = size(IntersectionLattice);
+	int i, j, k;
+
+	//Init Data structure and CenterList:
+	for(i =1;i<=level; i++){
+		Centerlist[i] = list();
+		for(j=1;j<=size(IntersectionLattice[i]);j++ ){
+			Centerlist[i][j] = CalculateIntersectionLatticeIdeal(IntersectionLattice[i][j]);	 
+		}
+	}
+	return(Centerlist);
+}example
+{ "EXAMPLE:"; echo = 2;
+	ring r = 0,(x,y),dp;
+	list L = list(x-1,y-1,xy-1);
+	HuCalc(L);
+}
+
+
+proc CalculateIntersectionLattice(list L1)
+"USAGE: CalculateIntersectionLattice(list L); list L of locally monomials
+RETURN: Calculates the intersection Lattice as a list of lists
+EXAMPLE: example CalculateIntersectionLattice; shows an example
+"{
+	list IntersectionLattice = list();
+	IntersectionLattice[1] = list();
+	ideal IntersectionLatticeIdeal;
+	int i = 1;
+	int emptyOrOrigin = 0;
+	int j = 1; int k;
+	list L = removeDuplicates(L1);						//remove duplicates
+	int sizeL = size(L);
+	int NotEmpty = 0;
+
+	for(j=1;j<=sizeL; j++){								//remove 1-Entries of L
+		if(L[j] == 1){
+			L = delete(L,j);
+			sizeL = size(L);
+			j--;
+		}
+	}
+	
+	int sizeMinAss;
+	list MinAss;
+														//change non-irreducible entries: [n]: xy-> [n]: x, [last]: y
+	for(j=1; j<=sizeL; j++){							// Do not change sizeL in the for-loops for not consider the newest elements
+		MinAss = minAssGTZ(L[j]);
+		sizeMinAss = size(MinAss);
+		if(sizeMinAss > 1){
+			L[j] = poly(MinAss[1][1]);
+			for(k=2; k<=sizeMinAss; k++){
+				L[size(L)+1] = poly(MinAss[k][1]);
+			}
+		}
+	} 
+	
+	L=removeDuplicates(L);								//maybe new duplicates were constructed
+	sizeL = size(L);
+	
+	for(j=1;j<=sizeL;j++){
+		IntersectionLattice[i][j] = L[j];
+		if (NotEmpty == 0 and L[j] != 1){
+			NotEmpty =1;
+		}
+	}
+
+	if(NotEmpty == 0){
+		emptyOrOrigin = 1;
+		return(IntersectionLattice);
+	}
+
+	i++;
+	list SubsetList = list();
+	int sizeSubsetList = size(SubsetList);
+	list EmptySubsetIndices = list();									//for optimization: store the maximal indices with an empty intersection
+	
+	while(emptyOrOrigin == 0){
+		NotEmpty = 0;
+		emptyOrOrigin = 0;	
+		// calculate IntersectionLattice 
+		SubsetList = subsets(sizeL,i);    		// list of tuples of indices
+
+		SubsetList = deleteEmptyIntersections(SubsetList,EmptySubsetIndices);
+		sizeSubsetList = size(SubsetList);		// only need to be calculated once 
+		IntersectionLattice[i] = list();
+		
+		
+		for(j=1;j<=sizeSubsetList;j++){
+
+			IntersectionLattice[i][j] = list();
+			for(k=1; k<= i; k++){
+				//if (L[SubsetList[j][k]] != 1){
+					IntersectionLattice[i][j][size(IntersectionLattice[i][j])+1] = L[SubsetList[j][k]];	// Add polynomial with the right index
+				//}
+			}
+			
+			IntersectionLatticeIdeal = CalculateIntersectionLatticeIdeal(IntersectionLattice[i][j]);
+			
+			if(EqualityOfIdeal(IntersectionLatticeIdeal,1) == 1){
+				
+				//delete empty ideal
+				IntersectionLattice[i] = delete(IntersectionLattice[i],j);
+				EmptySubsetIndices[size(EmptySubsetIndices)+1] = SubsetList[j];										
+			}
+		}
+		//j--;								// else: out of range
+		//IntersectionLatticeIdeal = CalculateIntersectionLatticeIdeal(IntersectionLattice[i][j]);
+		//if(EqualityOfIdeal(IntersectionLatticeIdeal,1) == 0){
+		if(size(IntersectionLattice[i]) > 0){
+			NotEmpty = 1;
+		}
+		
+		//}
+		if(NotEmpty == 0 or (size(L) == i)){		//Termination
+			emptyOrOrigin = 1;
+			if(NotEmpty == 0){
+				IntersectionLattice = delete(IntersectionLattice,size(IntersectionLattice));
+			}
+		}	
+		i++;
+	}
+
+	return(IntersectionLattice);
+}example
+{ "EXAMPLE:"; echo = 2;
+	ring r = 0,(x,y),dp;
+	//list L = list(x-1,y-1,xy-1,1,xy-1);
+	//CalculateIntersectionLattice(L);
+	list L;
+	L = list(x-1,y-1,xy-1,xy);
+	CalculateIntersectionLattice(L);
+}
+
+
+
+proc CalculateIntersectionLatticeIdeal(list IntersectionLattice)
+"USAGE: CalculateIntersectionLatticeIdeal(list IntersectionLattice); entry of the Intersectionlattice for which we want to calculate the ideal corresponding to 
+RETURN: Calculates an ideal corresponding to an entry of the IntersectionLattice
+EXAMPLE: example CalculateIntersectionLatticeIdeal; shows an example
+"{
+	ideal IntersectionLatticeIdeal = IntersectionLattice[1];
+	int i;
+
+	for(i=2;i<= size(IntersectionLattice); i++){
+		IntersectionLatticeIdeal = ideal(IntersectionLatticeIdeal) + ideal(IntersectionLattice[i]);
+	}
+
+	return(IntersectionLatticeIdeal);
+}example
+{ "EXAMPLE:"; echo = 2;
+	ring r = 0,(x,y),dp;
+	list L = list(x-1,y-1,xy-1);
+	list IntersectionLattice = CalculateIntersectionLattice(L);
+	CalculateIntersectionLatticeIdeal(IntersectionLattice[2][2]);
+}
+
+
+proc deleteEmptyIntersections(list SubsetList, list EmptySubsetIndices)
+"USAGE: deleteEmptyIntersections(list SubsetList, list EmptySubsetIndices); list S... list E... where we want to delete sublists of S which contains entries of E as sublist
+RETURN: SubsetList without sublists which contains entries of EmptySubsetIndices
+EXAMPLE: example deleteEmptyIntersections; shows an example
+"{
+	int i,j,k;
+	
+	for(i=1; i<=size(EmptySubsetIndices); i++){
+		for(j=1;j<=size(SubsetList);j++){
+			if(subset(EmptySubsetIndices[i], SubsetList[j]) == 1){										//is E... a sublist of S...?
+				SubsetList = delete(SubsetList,j);
+				j--;
+			}
+		}
+	}
+	
+	
+	return(SubsetList);
+}example
+{ "EXAMPLE:"; echo = 2;
+	ring r = 0,(x,y),dp;
+	list S = subsets(4,3); 
+	list E = list(3,4);
+	deleteEmptyIntersections(S,E);
+}
+
+proc removeDuplicates(list L)
+"USAGE: removeDuplicates(list L); list L with or without duplicates
+RETURN: same list without duplicates
+EXAMPLE: example removeDuplicates; shows an example
+"{
+	int i,j;
+	for(i=2;i<=size(L);i++){
+		for(j=1; j<i; j++){
+			if(L[i] == L[j]){
+				L = delete(L,i);
+				i--;
+			}
+		}
+	}
+	
+	return(L);
+}example
+{ "EXAMPLE:"; echo = 2;
+	ring r = 0,(x,y),dp;
+	list L = list(x-1,y-1,xy-1,1,xy-1,1);
+	removeDuplicates(L);
+}
