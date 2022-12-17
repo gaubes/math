@@ -122,7 +122,98 @@ example
    bM;
 }
 
+proc main_generic_resolve(string mode, int m, list#){
+	if(mode == "gen"){
+		if(size(#)>0){
+			int n = #[1];
+		}else{
+			int n = m;
+		}
+		ring r = 0,(x(1..m*n)),dp;
+		matrix M = genericmat(m,n);
+	}
+	if(mode == "sym"){
+		ring r = 0,(x(1..m*(m+1) div 2)),dp;
+		matrix M = symmat(m);
+	}
+	if(mode == "skew"){
+		ring r = 0,(x(1..m*(m-1)div 2)),dp;
+		matrix M = skewmat(m);
+	}
+	if(!defined(r)){
+		ERROR("choose a mode gen,sym or skew followed by the size of your generic matrix");
+	}
+	
+	list minorsize = list(min(ncols(M),nrows(M)),var(1) );							// default: resolve maximal minors; variable and list is only technically in order that we can store the list in the ring!!!
+	ideal minorideal = minor(M,1);
+	if(size(#)>1 and mode == "gen"){
+		if(typeof(#[2])=="int"){
+			minorsize[1] = #[2];									//calculate how long we have to blow up until the #[1]-minors are resolved
+			minorideal = minor(M,minorsize[1]);
+		}
+	}
+	if(size(#)>0 and mode != "gen"){
+		if(typeof(#[1])=="int"){
+			minorsize[1] = #[1];									//calculate how long we have to blow up until the #[1]-minors are resolved
+			minorideal = minor(M,minorsize[1]);
+		}
+	}
+	
+	export(minorsize);
 
+	export(minorideal);
+	
+	module path = [0,-1];										//path of the current chart, autoconverted to matrix
+	export(path);
+	
+	list BlowUpTree;
+	BlowUpTree[1] = basering;
+	BlowUpTree = BlowUpTree +  CopyDataInNextChartsAndBlowUp(M,minor(M,1),1);
+	int i; int j; int k;
+	
+	int number_cols, number_rows;
+	int mindim;
+	int chart_counter = size(BlowUpTree);
+	
+	int oldsize;
+	for(i = 2; i<= size(BlowUpTree);i++){			
+		if(defined(XijChart)){
+			kill(XijChart);
+		}
+		def XijChart = BlowUpTree[i];
+		setring(XijChart);
+
+		number_cols = ncols(N);
+		number_rows = nrows(N);
+		if(mode == "gen"){
+			matrix M = generic_gauss(Ntmp, number_rows,number_cols); 					// Reduction in Dimension
+			list transformationlist = generic_transformation_of_variables(M);			//Transformation for the new system of parameters
+		}
+		if(mode =="sym"){
+			matrix M = symmetric_gauss(Ntmp, number_rows,number_cols); 					// Reduction in Dimension
+			list transformationlist = symmetric_transformation_of_variables(M);			//Transformation for the new system of parameters
+		}
+		if(mode =="skew"){
+			matrix M = skewsymmetric_gauss(Ntmp, number_rows,number_cols); 					// Reduction in Dimension
+			list transformationlist = skewsymmetric_transformation_of_variables(M);			//Transformation for the new system of parameters
+		}
+		M = transformationlist[1];
+		ideal minorideal = transformationlist[2];
+		export(minorideal); 
+
+		mindim = min(ncols(M),nrows(M));
+		if(minorsize[1] > 1){		
+			oldsize = size(BlowUpTree);
+			BlowUpTree = BlowUpTree + CopyDataInNextChartsAndBlowUp(M,minor(M,1),i);
+			chart_counter = chart_counter + size(BlowUpTree) - oldsize;
+		}
+	}
+	return(BlowUpTree,chart_counter);
+	
+	
+	
+	return(1);
+}
 proc generic_resolve(int m, int n, list #)
 "USAGE:generic_resolve(int m, int n [, int r] ); computes the resolution of the ideal of r-minors of a generic mxn matrix
 RETURN: list of rings which represent the charts during the whole resolution process
@@ -152,8 +243,6 @@ EXAMPLE: example generic_resolve; shows an example
 	BlowUpTree = BlowUpTree +  CopyDataInNextChartsAndBlowUp(M,minor(M,1),1);
 	int i; int j; int k;
 	
-	
-	int centersize = size(BlowUpTree);
 	int number_cols, number_rows;
 	int mindim;
 	int chart_counter = size(BlowUpTree);
@@ -332,7 +421,6 @@ EXAMPLE: example CopyDataInNextChartAndBlowUp; shows an example
 		export(path);
 		
 		list minorsize = BlowUpMap(minorsize);
-		minorsize[1] = minorsize[1] - 1;	
 		export(minorsize);
 	}
 	return(successorList);
@@ -405,7 +493,8 @@ EXAMPLE: example generic_gauss; shows an example
 		}
 	}
 	matrix M = submat(redN,newrows,newcols);
-		
+	
+	minorsize[1] = minorsize[1] - 1;	//internal note that the desired minorsize has decrease
 	
 	return(M);
 }example{
@@ -487,6 +576,7 @@ EXAMPLE: example skewsymmetric_gauss; shows an example
 		}
 	}
 	
+	minorsize[1] = minorsize[1] - 2;	//internal note that the desired minorsize has decrease
 	matrix M = submat(redN,newcols,newcols);
 	return(M);
 }example{
@@ -537,7 +627,7 @@ EXAMPLE: example skewsymmetric_gauss; shows an example
 			}
 		}
 		Ntemp = redN;
-		
+		minorsize[1] = minorsize[1] - 1;	//internal note that the desired minorsize has decrease
 	}else{			//non-diagonal 1-entries [j,k] and [k,j]
 		for(i = 1; i <= number_rows; i++){							//row operations for the first 0-column
 			for(l = 1; l<=number_cols; l++){
@@ -586,6 +676,7 @@ EXAMPLE: example skewsymmetric_gauss; shows an example
 			}
 		}
 		Ntemp = redN;
+		minorsize[1] = minorsize[1] - 2;	//internal note that the desired minorsize has decrease
 	}
 	
 	int changed = 0;
