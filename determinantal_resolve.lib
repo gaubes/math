@@ -221,7 +221,7 @@ EXAMPLE: example skewsymmetric_resolve; shows an example
 
 		number_cols = ncols(N);
 		number_rows = nrows(N);
-		//print(N);
+		print(N);
 		matrix M = skewsymmetric_gauss(Ntmp, number_rows,number_cols); 		// Reduction in Dimension
 		list transformationlist = skewsymmetric_transformation_of_variables(M);			//Transformation for the new system of parameters
 		M = transformationlist[1];
@@ -259,8 +259,11 @@ EXAMPLE: example CopyDataInNextChartAndBlowUp; shows an example
 		map BlowUpMap = r,bM;					
 		matrix N = BlowUpMap(M);				// total transform
 		export(N);
-		matrix Ntmp = sat(N+sT,eD[1])[1];		// Achtung !!! Reihenfolge der Einträge und Dimension der neuen Matrix!!!
+		
+		//matrix Ntmp = sat(N+sT,eD[1])[1];		// Achtung !!! Reihenfolge der Einträge und Dimension der neuen Matrix!!!
+		matrix Ntmp = weakTransformOfMatrix(N);
 		export(Ntmp);
+		print("Ntmp in blowup");
 		print(Ntmp);
 		number_cols = ncols(N);
 		number_rows = nrows(N);
@@ -280,8 +283,24 @@ EXAMPLE: example CopyDataInNextChartAndBlowUp; shows an example
 	CopyDataInNextChartsAndBlowUp(M,std(minor(M,1)),1);	
 }
 
-
-
+//TODO:
+proc weakTransformOfMatrix(matrix N){
+	int i,j,k;
+	int exponent;
+	
+	int number_rows = nrows(N);
+	int number_cols = ncols(N);
+	
+	
+	//TODO: for the general case!!! find max exponent c such that we can factor out eD[1]^c
+	
+	for(i = 1; i<= number_rows;i++){
+		for(j = 1; j<= number_cols; j++){
+			N[i,j] = N[i,j] div eD[1];
+		}
+	}
+	return(N);
+}
 
 
 proc generic_gauss(matrix N, int number_rows, int number_cols)
@@ -341,7 +360,7 @@ EXAMPLE: example skewsymmetric_gauss; shows an example
 "
 {		
 	int i,j,k,l;
-	
+	poly epsilon;
 	intvec newcols, newrows, cols, rows;
 	intvec coordinatesOfOne;
 	
@@ -357,50 +376,26 @@ EXAMPLE: example skewsymmetric_gauss; shows an example
 			if(redN[j,k] == 1) {coordinatesOfOne = j,k;}
 		} 
 	}										// 1 at position [j,k] -> choose submatrix without this entry
+	epsilon = 1-redN[coordinatesOfOne[1],coordinatesOfOne[1]] * redN[coordinatesOfOne[2],coordinatesOfOne[2]];
 	
 	matrix Ntemp = redN;
-	//print("vorher");
-	//print(redN);
+	print("vorher");
+	print(redN);
 	//[j,k] is the entry which equals 1 -> [k,j] equals -1
 	for(i = 1; i <= number_rows; i++){							//row operations for the first 0-column
 		//if(i != coordinatesOfOne[1] and i != coordinatesOfOne[2]){
 			for(l = 1; l<=number_cols; l++){
 				if(i != coordinatesOfOne[1] and i != coordinatesOfOne[2]){
-					redN[i,l] = Ntemp[i,l] - Ntemp[coordinatesOfOne[1],l] * Ntemp[i,l];
+					redN[i,l] = Ntemp[i,l] + Ntemp[coordinatesOfOne[2],l] * Ntemp[i,l];
 				}
 			}
 		//}
 	}
-	//print("erste operation");
+	print("erste operation");
 	Ntemp = redN;
-	//print(Ntemp);
+	print(Ntemp);
 
 
-	// let the column entries vanish:
-	for(l=1;l<=number_cols;l++){
-		if(coordinatesOfOne[2] != l){
-			redN[coordinatesOfOne[1],l] = 0;
-		}
-	}
-	
-	Ntemp = redN;
-	//print("zweite operation");
-	//print(Ntemp);
-	
-	//TODO!
-	for(i = 1; i <= number_rows; i++){							//row operations for the second 0-column
-		for(l = 1; l<=number_cols; l++){
-			if(l != coordinatesOfOne[2]){
-				redN[i,l] = Ntemp[i,l] + Ntemp[coordinatesOfOne[2],l] * Ntemp[i,l];
-			}
-		}
-	}
-	Ntemp = redN;
-	//print("dritte operation");
-	
-	//print(Ntemp[3,3]);
-	//print(Ntemp[4,4]);
-	
 	// let the column entries vanish:
 	for(l=1;l<=number_cols;l++){
 		if(coordinatesOfOne[1] != l){
@@ -409,10 +404,35 @@ EXAMPLE: example skewsymmetric_gauss; shows an example
 	}
 	
 	Ntemp = redN;
-	//print("vierte operation");
-	//print(Ntemp);
+	print("zweite operation");
+	print(Ntemp);
 	
+	//TODO!
+	for(i = 1; i <= number_rows; i++){							//row operations for the second 0-column
+		for(l = 1; l<=number_cols; l++){
+			if(i!= coordinatesOfOne[1]){
+				redN[i,l] = Ntemp[i,l] - Ntemp[coordinatesOfOne[1],l] * Ntemp[i,l];
+			}
+		}
+	}
+	Ntemp = redN;
+	print("dritte operation");
+	print(Ntemp);
 	
+	// let the column entries vanish:
+	for(l=1;l<=number_cols;l++){
+		if(coordinatesOfOne[2] != l){
+			redN[coordinatesOfOne[1],l] = 0;
+		}
+	}
+	
+	Ntemp = redN;
+	print("vierte operation");
+	print(Ntemp);
+	print(Ntemp[3,4]);
+	print(-Ntemp[4,3]);
+	
+
 	
 	
 	//print(redN);
