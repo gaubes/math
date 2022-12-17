@@ -196,6 +196,8 @@ EXAMPLE: example skewsymmetric_resolve; shows an example
 {
 	int i; int j; int k;
 	int number_cols,number_rows;
+	int mindim;
+	
 	ring r = 0,(x(1..m*(m-1)div 2)),dp;
 	
 	
@@ -209,9 +211,9 @@ EXAMPLE: example skewsymmetric_resolve; shows an example
 	list BlowUpTree;
 	BlowUpTree[1] = basering;
 	BlowUpTree = BlowUpTree +  CopyDataInNextChartsAndBlowUp(M,std(minor(M,1)),1);
+	int chart_counter = size(BlowUpTree);
 	
-	
-	
+	int oldsize;
 	for(i = 2; i<= size(BlowUpTree);i++){			
 		if(defined(XijChart)){
 			kill(XijChart);
@@ -221,13 +223,18 @@ EXAMPLE: example skewsymmetric_resolve; shows an example
 
 		number_cols = ncols(N);
 		number_rows = nrows(N);
-		print(N);
 		matrix M = skewsymmetric_gauss(Ntmp, number_rows,number_cols); 		// Reduction in Dimension
 		list transformationlist = skewsymmetric_transformation_of_variables(M);			//Transformation for the new system of parameters
 		M = transformationlist[1];
-		//print(M);
 		ideal minorideal = transformationlist[2];
-		export(minorideal); 
+		export(minorideal); 	
+		mindim = ncols(M);
+		print(M);
+		if(mindim > 2){		
+			oldsize = size(BlowUpTree);
+			BlowUpTree = BlowUpTree + CopyDataInNextChartsAndBlowUp(M,minor(M,1),i);
+			chart_counter = chart_counter + size(BlowUpTree) - oldsize;
+		}
 	}
 	//TODO more than one blow up!!! see generic_resolve();
 	return(BlowUpTree);
@@ -263,8 +270,6 @@ EXAMPLE: example CopyDataInNextChartAndBlowUp; shows an example
 		//matrix Ntmp = sat(N+sT,eD[1])[1];		// Achtung !!! Reihenfolge der Einträge und Dimension der neuen Matrix!!!
 		matrix Ntmp = weakTransformOfMatrix(N);
 		export(Ntmp);
-		print("Ntmp in blowup");
-		print(Ntmp);
 		number_cols = ncols(N);
 		number_rows = nrows(N);
 		
@@ -360,7 +365,7 @@ EXAMPLE: example skewsymmetric_gauss; shows an example
 "
 {		
 	int i,j,k,l;
-	poly epsilon;
+	//poly epsilon;
 	intvec newcols, newrows, cols, rows;
 	intvec coordinatesOfOne;
 	
@@ -376,49 +381,22 @@ EXAMPLE: example skewsymmetric_gauss; shows an example
 			if(redN[j,k] == 1) {coordinatesOfOne = j,k;}
 		} 
 	}										// 1 at position [j,k] -> choose submatrix without this entry
-	epsilon = 1-redN[coordinatesOfOne[1],coordinatesOfOne[1]] * redN[coordinatesOfOne[2],coordinatesOfOne[2]];
+	//epsilon = 1-redN[coordinatesOfOne[1],coordinatesOfOne[1]] * redN[coordinatesOfOne[2],coordinatesOfOne[2]];
 	
 	matrix Ntemp = redN;
-	print("vorher");
-	print(redN);
 	//[j,k] is the entry which equals 1 -> [k,j] equals -1
 	for(i = 1; i <= number_rows; i++){							//row operations for the first 0-column
 		//if(i != coordinatesOfOne[1] and i != coordinatesOfOne[2]){
 			for(l = 1; l<=number_cols; l++){
 				if(i != coordinatesOfOne[1] and i != coordinatesOfOne[2]){
-					redN[i,l] = Ntemp[i,l] + Ntemp[coordinatesOfOne[2],l] * Ntemp[i,l];
+					redN[i,l] = Ntemp[i,l] - Ntemp[i,coordinatesOfOne[2]] * Ntemp[coordinatesOfOne[1],l];
 				}
 			}
 		//}
 	}
-	print("erste operation");
 	Ntemp = redN;
-	print(Ntemp);
 
 
-	// let the column entries vanish:
-	for(l=1;l<=number_cols;l++){
-		if(coordinatesOfOne[1] != l){
-			redN[coordinatesOfOne[2],l] = 0;
-		}
-	}
-	
-	Ntemp = redN;
-	print("zweite operation");
-	print(Ntemp);
-	
-	//TODO!
-	for(i = 1; i <= number_rows; i++){							//row operations for the second 0-column
-		for(l = 1; l<=number_cols; l++){
-			if(i!= coordinatesOfOne[1]){
-				redN[i,l] = Ntemp[i,l] - Ntemp[coordinatesOfOne[1],l] * Ntemp[i,l];
-			}
-		}
-	}
-	Ntemp = redN;
-	print("dritte operation");
-	print(Ntemp);
-	
 	// let the column entries vanish:
 	for(l=1;l<=number_cols;l++){
 		if(coordinatesOfOne[2] != l){
@@ -427,18 +405,43 @@ EXAMPLE: example skewsymmetric_gauss; shows an example
 	}
 	
 	Ntemp = redN;
-	print("vierte operation");
-	print(Ntemp);
-	print(Ntemp[3,4]);
-	print(-Ntemp[4,3]);
-	
+
+	//------------------------------------------------------------------
+	//epsilon;
+	//for(i=1;i<=number_rows;i++){ //multiply the column with the -1 entry with epsilon
+	//	redN[i,coordinatesOfOne[2]] = epsilon * redN[i,coordinatesOfOne[2]]; 
+	//}
+	//	for (i = 1; i <= number_rows; i++){
+	//	for(l = 1; l<= number_cols; l++){
+	//		if(i!= coordinatesOfOne[1] and i!= coordinatesOfOne[2]){
+	//			redN[i,l] = epsilon * redN[i,l];
+	//		}
+	//	}
+	//}
+	//------------------------------------------------------------------
 
 	
+	for(i = 1; i <= number_rows; i++){							//column operations for the second 0-row
+		for(l = 1; l<=number_cols; l++){
+			if(l!= coordinatesOfOne[2] and l!= coordinatesOfOne[1]){
+				redN[i,l] = Ntemp[i,l] + Ntemp[i,coordinatesOfOne[1]] * Ntemp[coordinatesOfOne[2],l];
+			}
+		}
+	}
+	Ntemp = redN;
+
 	
-	//print(redN);
+	// let the column entries vanish:
+	for(i=1;i<=number_cols;i++){
+		if(coordinatesOfOne[2] != i){
+			redN[i,coordinatesOfOne[1]] = 0;
+		}
+	}
+	Ntemp = redN;
+	
 	int changed = 0;
 	for(i=1;i<=number_cols;i++){
-		if(i != j and i != k){
+		if(i != coordinatesOfOne[1] and i != coordinatesOfOne[2]){
 			if(changed == 0){						// because we do not need a leading zero-entry in the intvec newcols
 				newcols[1] = i;	
 				changed = 1;
@@ -448,10 +451,7 @@ EXAMPLE: example skewsymmetric_gauss; shows an example
 		}
 	}
 	
-	
 	matrix M = submat(redN,newcols,newcols);
-		
-	
 	return(M);
 }example{
 		//TODO
