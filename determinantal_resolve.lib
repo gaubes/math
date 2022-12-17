@@ -273,12 +273,15 @@ EXAMPLE: example skewsymmetric_resolve; shows an example
 		if(defined(XijChart)){
 			kill(XijChart);
 		}
+
+
 		def XijChart = BlowUpTree[i];
 		setring(XijChart);
 
 		number_cols = ncols(N);
 		number_rows = nrows(N);
 		matrix M = symmetric_gauss(Ntmp, number_rows,number_cols); 		// Reduction in Dimension
+
 		list transformationlist = symmetric_transformation_of_variables(M);			//Transformation for the new system of parameters
 		M = transformationlist[1];
 		ideal minorideal = transformationlist[2];
@@ -318,14 +321,12 @@ EXAMPLE: example CopyDataInNextChartAndBlowUp; shows an example
 		map BlowUpMap = r,bM;					
 		matrix N = BlowUpMap(M);				// total transform
 		export(N);
-		print(N);
 		//matrix Ntmp = sat(N+sT,eD[1])[1];		// Achtung !!! Reihenfolge der Einträge und Dimension der neuen Matrix!!!
 		matrix Ntmp = weakTransformOfMatrix(N);
 		export(Ntmp);
 		number_cols = ncols(N);
 		number_rows = nrows(N);
-		print(Ntmp);
-		
+
 		def path = imap(r,path);				//init pathmatrix 
 		path=path,[chartnumber,j];
 		export(path);
@@ -512,6 +513,8 @@ EXAMPLE: example skewsymmetric_gauss; shows an example
 			if(redN[j,k] == 1) {coordinatesOfOne = j,k;}
 		} 
 	}										// 1 at position [j,k] -> choose submatrix without this entry
+	
+	//if(size(coordinatesOfOne) == 1){~;}
 	epsilon = 1-redN[coordinatesOfOne[1],coordinatesOfOne[1]] * redN[coordinatesOfOne[2],coordinatesOfOne[2]];
 	
 	matrix Ntemp = redN;
@@ -519,7 +522,7 @@ EXAMPLE: example skewsymmetric_gauss; shows an example
 	// distinguish diagonal and non-diagonal entries
 	if(coordinatesOfOne[1] == coordinatesOfOne[2]){			
 		for(i = 1; i <= number_rows; i++){							//row operations for the first 0-column
-			for(l = 1; l<=number_cols; l++){
+			for(l = 1; l <= number_cols; l++){
 				if(i != coordinatesOfOne[1]){
 					redN[i,l] = Ntemp[i,l] - Ntemp[i,coordinatesOfOne[1]] * Ntemp[coordinatesOfOne[1],l];
 				}
@@ -674,7 +677,7 @@ EXAMPLE: example generic_transformation_of_variables; shows an example
 	matrix newM = M;
 
 	for(i = 1; i<= number_rows; i++){							//Todo: right order of cols and rows???
-		for(j = i+1; j<= number_cols; j++){
+		for(j = i; j<= number_cols; j++){
 			if(M[i,j] != 0){
 				newM[i,j] = var(new_nvars);
 				newM[j,i] = var(new_nvars);
