@@ -6,15 +6,21 @@ AUTHOR:  Sabrina Alexandra Gaube, sabrina.gaube@uol.de
 
 PROCEDURES:
 	blowUp3(J, C, #); same like blowUp2 but with the subcall blowUpBO(BO,C,2) instead of blowUpBO(BO,C,1);
-	generic_resolve(m, n, #); main method for resolution of generic mxn matrices
-	skewsymmetric_resolve(m); main method for resolution of generic skewsymmetric mxm matrices
+	main_generic_resolve(mode, m, #); main method for resolution of all generic matrices, with string parameter mode
+	generic_resolve(m, n, #); call method for resolution of generic mxn matrices
+	skewsymmetric_resolve(m); call method for resolution of generic skewsymmetric mxm matrices
+	symmetric_resolve(m); call method for resolution of generic ymmetric mxm matrices
 	
 	CopyDataInNextChartsAndBlowUp(M, Center, chartnumber); blow up method which copies data in the successor charts
+	weakTransformOfMatrix(N); given a blown up matrix N it calculates the weak transform of a matrix with respect to rows and columns //TODO 
+	
 	generic_gauss(N, number_rows, number_cols); calculates the gaussian steps for the generic case
-	skewsymmetric_gauss(N, number_rows, number_cols); gaussian steps for the skewsymmetric case //TODO
+	skewsymmetric_gauss(N, number_rows, number_cols); gaussian steps for the skewsymmetric case 
+	symmetric_gauss(N, number_rows, number_cols); gaussian steps for the symmetric case
 	
 	generic_transformation_of_variables(M); transformation of variables for the generic case
 	skewsymmetric_transformation_of_variables(M); transformation of variables for the skewsymmetric case
+	symmetric_transformation_of_variables(M); transformation of variables for the symmetric case
 	
 ";
 
@@ -122,7 +128,12 @@ example
    bM;
 }
 
-proc main_generic_resolve(string mode, int m, list#){
+proc main_generic_resolve(string mode, int m, list #)
+"USAGE:main_generic_resolve(string mode, int m[, int n , int r] ); computes the resolution of the ideal of r-minors of a (skew)-symmetric generic mxm matrix with mode = skew or mode = sym or generic mxn matrix with mode = gen
+RETURN: list of rings which represent the charts during the whole resolution process
+EXAMPLE: example generic_resolve; shows an example
+"
+{
 	if(mode == "gen"){
 		if(size(#)>0){
 			int n = #[1];
@@ -202,7 +213,7 @@ proc main_generic_resolve(string mode, int m, list#){
 		export(minorideal); 
 
 		mindim = min(ncols(M),nrows(M));
-		if(minorsize[1] > 1){		
+		if(minorsize[1] > 2){		//TODO!!! change value 2 ?
 			oldsize = size(BlowUpTree);
 			BlowUpTree = BlowUpTree + CopyDataInNextChartsAndBlowUp(M,minor(M,1),i);
 			chart_counter = chart_counter + size(BlowUpTree) - oldsize;
@@ -214,176 +225,69 @@ proc main_generic_resolve(string mode, int m, list#){
 	
 	return(1);
 }
-proc generic_resolve(int m, int n, list #)
-"USAGE:generic_resolve(int m, int n [, int r] ); computes the resolution of the ideal of r-minors of a generic mxn matrix
+proc generic_resolve(int m, list #)
+"USAGE:generic_resolve(int m[, int n , int r] ); computes the resolution of the ideal of r-minors of a generic mxn matrix
 RETURN: list of rings which represent the charts during the whole resolution process
 EXAMPLE: example generic_resolve; shows an example
 "
 {							//generic matrix with m rows and n columns
-	ring r = 0,(x(1..m*n)),dp;
-	
-	matrix M = genericmat(m,n);
-	list minorsize = list(min(ncols(M),nrows(M)),var(1) );							// default: resolve maximal minors; variable and list is only technically in order that we can store the list in the ring!!!
-	ideal minorideal = minor(M,1);
-	if(size(#)>0){
-		if(typeof(#[1])=="int"){
-			minorsize[1] = #[1];									//calculate how long we have to blow up until the #[1]-minors are resolved
-			minorideal = minor(M,#[1]);
-		}
-	}
-	export(minorsize);
-
-	export(minorideal);
-	
-	module path = [0,-1];										//path of the current chart, autoconverted to matrix
-	export(path);
-	
+	int n, r;
 	list BlowUpTree;
-	BlowUpTree[1] = basering;
-	BlowUpTree = BlowUpTree +  CopyDataInNextChartsAndBlowUp(M,minor(M,1),1);
-	int i; int j; int k;
-	
-	int number_cols, number_rows;
-	int mindim;
-	int chart_counter = size(BlowUpTree);
-	
-	int oldsize;
-	for(i = 2; i<= size(BlowUpTree);i++){			
-		if(defined(XijChart)){
-			kill(XijChart);
+	if (size(#)>0){
+		n = #[1];
+		if(size(#)>1){
+			r = #[2];
+			BlowUpTree = main_generic_resolve("gen",m,n,r);
+		}else{
+			BlowUpTree = main_generic_resolve("gen",m,n);
 		}
-		def XijChart = BlowUpTree[i];
-		setring(XijChart);
-
-		number_cols = ncols(N);
-		number_rows = nrows(N);
-		matrix M = generic_gauss(Ntmp, number_rows,number_cols); // Reduction in Dimension
-		list transformationlist = generic_transformation_of_variables(M);			//Transformation for the new system of parameters
-		M = transformationlist[1];
-		ideal minorideal = transformationlist[2];
-		export(minorideal); 
-
-		mindim = min(ncols(M),nrows(M));
-		if(minorsize[1] > 1){		
-			oldsize = size(BlowUpTree);
-			BlowUpTree = BlowUpTree + CopyDataInNextChartsAndBlowUp(M,minor(M,1),i);
-			chart_counter = chart_counter + size(BlowUpTree) - oldsize;
-		}
+	}else{
+		BlowUpTree = main_generic_resolve("gen",m,m);
 	}
-	return(BlowUpTree,chart_counter);
+	
+	return(BlowUpTree);
 }
 example{ 	
 	generic_resolve(4,3,2);
 }
 
 
-proc skewsymmetric_resolve(int m)
+proc skewsymmetric_resolve(int m, list #)
 "USAGE:skewsymmetric_resolve(int m [, int r] ); computes the resolution of the ideal of r-minors of a generic skewsymmetric mxm matrix
 RETURN: list of rings which represent the charts during the whole resolution process
 EXAMPLE: example skewsymmetric_resolve; shows an example
 "
 {
-	int i; int j; int k;
-	int number_cols,number_rows;
-	int mindim;
-	
-	ring r = 0,(x(1..m*(m-1)div 2)),dp;
-	
-	
-	matrix M = skewmat(m);
-	module path = [0,-1];										//path of the current chart, autoconverted to matrix
-	export(path);
-	
-	list minorsize = list(m,var(1) );
-	export(minorsize);	
-	
+	int r;
 	list BlowUpTree;
-	BlowUpTree[1] = basering;
-	BlowUpTree = BlowUpTree +  CopyDataInNextChartsAndBlowUp(M,std(minor(M,1)),1);
-	int chart_counter = size(BlowUpTree);
-	
-	int oldsize;
-	for(i = 2; i<= size(BlowUpTree);i++){			
-		if(defined(XijChart)){
-			kill(XijChart);
-		}
-		def XijChart = BlowUpTree[i];
-		setring(XijChart);
-
-		number_cols = ncols(N);
-		number_rows = nrows(N);
-		matrix M = skewsymmetric_gauss(Ntmp, number_rows,number_cols); 		// Reduction in Dimension
-		list transformationlist = skewsymmetric_transformation_of_variables(M);			//Transformation for the new system of parameters
-		M = transformationlist[1];
-		ideal minorideal = transformationlist[2];
-		export(minorideal); 	
-		mindim = ncols(M);
-
-		if(mindim > 2){		
-			oldsize = size(BlowUpTree);
-			BlowUpTree = BlowUpTree + CopyDataInNextChartsAndBlowUp(M,minor(M,1),i);
-			chart_counter = chart_counter + size(BlowUpTree) - oldsize;
-		}
+	if (size(#)>0){
+		r = #[1];
+		BlowUpTree = main_generic_resolve("skew",m,r);
+	}else{
+		BlowUpTree = main_generic_resolve("skew",m);
 	}
-	//TODO more than one blow up!!! see generic_resolve();
+	
 	return(BlowUpTree);
 }example{
 	skewsymmetric_resolve(4);
 }
 
 
-proc symmetric_resolve(int m)
+proc symmetric_resolve(int m, list #)
 "USAGE:symmetric_resolve(int m [, int r] ); computes the resolution of the ideal of r-minors of a generic skewsymmetric mxm matrix
 RETURN: list of rings which represent the charts during the whole resolution process
 EXAMPLE: example skewsymmetric_resolve; shows an example
 "
 {
-	int i; int j; int k;
-	int number_cols,number_rows;
-	int mindim;
-	
-	ring r = 0,(x(1..m*(m+1) div 2)),dp;
-	
-	
-	matrix M = symmat(m);
-	module path = [0,-1];										//path of the current chart, autoconverted to matrix
-	export(path);
-	
-	list minorsize = list(m,var(1));
-	export(minorsize);	
-	
+	int r;
 	list BlowUpTree;
-	BlowUpTree[1] = basering;
-	BlowUpTree = BlowUpTree +  CopyDataInNextChartsAndBlowUp(M,std(minor(M,1)),1);
-	int chart_counter = size(BlowUpTree);
-	
-	int oldsize;
-	for(i = 2; i<= size(BlowUpTree);i++){			
-		if(defined(XijChart)){
-			kill(XijChart);
-		}
-
-
-		def XijChart = BlowUpTree[i];
-		setring(XijChart);
-
-		number_cols = ncols(N);
-		number_rows = nrows(N);
-		matrix M = symmetric_gauss(Ntmp, number_rows,number_cols); 		// Reduction in Dimension
-
-		list transformationlist = symmetric_transformation_of_variables(M);			//Transformation for the new system of parameters
-		M = transformationlist[1];
-		ideal minorideal = transformationlist[2];
-		export(minorideal); 	
-		mindim = ncols(M);
-
-		if(mindim > 2){		//TODO
-			oldsize = size(BlowUpTree);
-			BlowUpTree = BlowUpTree + CopyDataInNextChartsAndBlowUp(M,minor(M,1),i);
-			chart_counter = chart_counter + size(BlowUpTree) - oldsize;
-		}
+	if (size(#)>0){
+		r = #[1];
+		BlowUpTree = main_generic_resolve("sym",m,r);
+	}else{
+		BlowUpTree = main_generic_resolve("sym",m);
 	}
-	//TODO more than one blow up!!! see generic_resolve();
+	
 	return(BlowUpTree);
 }example{
 	symmetric_resolve(4);
@@ -431,10 +335,14 @@ EXAMPLE: example CopyDataInNextChartAndBlowUp; shows an example
 }
 
 //TODO:
-proc weakTransformOfMatrix(matrix N){
+proc weakTransformOfMatrix(matrix N)
+"USAGE: weakTransformOfMatrix(matrix N); given a blown up matrix N it calculates the weak transform of a matrix with respect to rows and columns
+RETURN: transformed matrix 
+EXAMPLE: example weakTransformOfMatrix; shows an example
+"
+{
 	int i,j,k;
 	int exponent;
-	
 	int number_rows = nrows(N);
 	int number_cols = ncols(N);
 	
@@ -452,14 +360,13 @@ proc weakTransformOfMatrix(matrix N){
 
 proc generic_gauss(matrix N, int number_rows, int number_cols)
 "USAGE: generic_gauss(matrix N, int number_rows, int number_cols ); computes the gaussian steps in the resolution process.
-RETURN: matrix M
+RETURN: transformed matrix M
 EXAMPLE: example generic_gauss; shows an example
 "
 {		
 	int i,j,k;
 	
 	intvec newcols, newrows, cols, rows;
-	
 	
 	cols = 1..number_cols;
 	rows = 1..number_rows;
@@ -503,7 +410,7 @@ EXAMPLE: example generic_gauss; shows an example
 
 proc skewsymmetric_gauss(matrix N, int number_rows, int number_cols)
 "USAGE: skewsymmetric_gauss(matrix N, int number_rows, int number_cols ); computes the gaussian steps in the resolution process.
-RETURN: matrix M
+RETURN: transformed matrix M
 EXAMPLE: example skewsymmetric_gauss; shows an example
 "
 {		
@@ -584,9 +491,9 @@ EXAMPLE: example skewsymmetric_gauss; shows an example
 }
 
 proc symmetric_gauss(matrix N, int number_rows, int number_cols)
-"USAGE: skewsymmetric_gauss(matrix N, int number_rows, int number_cols ); computes the gaussian steps in the resolution process.
-RETURN: matrix M
-EXAMPLE: example skewsymmetric_gauss; shows an example
+"USAGE: symmetric_gauss(matrix N, int number_rows, int number_cols ); computes the gaussian steps in the resolution process.
+RETURN: transformed matrix M
+EXAMPLE: example symmetric_gauss; shows an example
 "
 {		
 	int i,j,k,l;
@@ -727,9 +634,9 @@ EXAMPLE: example generic_transformation_of_variables; shows an example
 
 
 proc skewsymmetric_transformation_of_variables(matrix M)
-"USAGE: skewsymmetric_transformaion(matrix M); computes the transformation of variables
+"USAGE: skewsymmetric_transformation_of_variables(matrix M); computes the transformation of variables
 RETURN: list of matrix M and the ideal of the minors of the desired size
-EXAMPLE: example generic_transformation_of_variables; shows an example
+EXAMPLE: example skewsymmetric_transformation_of_variables; shows an example
 "
 {
 	int i,j;
@@ -755,9 +662,9 @@ EXAMPLE: example generic_transformation_of_variables; shows an example
 }
 
 proc symmetric_transformation_of_variables(matrix M)
-"USAGE: skewsymmetric_transformaion(matrix M); computes the transformation of variables
+"USAGE: symmetric_transformation_of_variables(matrix M); computes the transformation of variables
 RETURN: list of matrix M and the ideal of the minors of the desired size
-EXAMPLE: example generic_transformation_of_variables; shows an example
+EXAMPLE: example symmetric_transformation_of_variables; shows an example
 "
 {
 	int i,j;
