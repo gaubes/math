@@ -12,7 +12,7 @@ PROCEDURES:
 	symmetric_resolve(m); call method for resolution of generic ymmetric mxm matrices
 	
 	CopyDataInNextChartsAndBlowUp(M, Center, chartnumber); blow up method which copies data in the successor charts
-	weakTransformOfMatrix(N); given a blown up matrix N it calculates the weak transform of a matrix with respect to rows and columns //TODO 
+	weakTransformOfMatrix(N); given a blown up matrix N it calculates the weak transform of a matrix with respect to rows and columns 
 	
 	generic_gauss(N, number_rows, number_cols); calculates the gaussian steps for the generic case
 	skewsymmetric_gauss(N, number_rows, number_cols); gaussian steps for the skewsymmetric case 
@@ -341,13 +341,11 @@ EXAMPLE: example weakTransformOfMatrix; shows an example
 "
 {
 	int i,j,k;
-	int exponent;
 	int number_rows = nrows(N);
 	int number_cols = ncols(N);
 	
 	
 	//find maximal value  c such that we can factor out eD[1]^c in each row:
-	exponent = 1;
 	poly tmp_entry;
 	poly tmp_eDPowC;
 	int eDDividesRow;
@@ -370,6 +368,33 @@ EXAMPLE: example weakTransformOfMatrix; shows an example
 			}
 		}
 		for(j = 1; j<= number_cols; j++){
+			N[i,j] = N[i,j] div tmp_eDPowC;
+		}
+	}
+	
+	//same factor out procedure for each column:
+	poly tmp_entry;
+	poly tmp_eDPowC;
+	int eDDividesRow;
+	
+	for(j=1; j<= number_cols;j++){
+		tmp_eDPowC = eD[1];
+		eDDividesRow = 1;
+		while(eDDividesRow){
+			for(i=1; i<=number_rows; i++){
+				tmp_entry = N[i,j] div tmp_eDPowC;						
+				if(tmp_entry == 0){
+					eDDividesRow = 0;
+					break;
+				}
+			}
+			if(eDDividesRow){
+				tmp_eDPowC = tmp_eDPowC * eD[1];
+			}else{
+				tmp_eDPowC = tmp_eDPowC div eD[1];
+			}
+		}
+		for(i = 1; i<= number_rows; i++){
 			N[i,j] = N[i,j] div tmp_eDPowC;
 		}
 	}
