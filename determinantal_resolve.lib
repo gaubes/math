@@ -221,6 +221,10 @@ EXAMPLE: example generic_resolve; shows an example
 		ideal minorideal = transformationlist[2];
 		export(minorideal); 
 		mindim = min(ncols(M),nrows(M));
+					
+		list BOList = generate_BOList(M);
+		export(BOList);
+		
 		if(minorsize[1] > 2){		//TODO!!! change value 2 ?
 			oldsize = size(BlowUpTree);
 			ideal cent = minor(M,1);									//auxiliary data 
@@ -758,7 +762,7 @@ EXAMPLE: example symmetric_transformation_of_variables; shows an example
 	//TODO	
 }
 
-proc generate_BOList(){
+proc generate_BOList(matrix M){
 	//BO[1] ambient space Wi
 	//BO[2] ideal defining the strict transform
 	//BO[3] invariant ???
@@ -776,13 +780,10 @@ proc generate_BOList(){
 	//lastMap ideal describing the preceding blow up leading to this chart
 	list BO;
 	BO[1] = W;					
-	BO[2] = minorideal;
+	BO[2] = minor(M,minorsize);
 	
-	BO[4] = list();				//Todo: calculate list E of exceptional divisors 
-	BO[5] = ideal(0);			// Todo: calculate ideal defining the map
-	
-	
-	
-	
+	BO[4] = E;				//Todo: calculate list E of exceptional divisors 
+	BO[5] = abb;			// Todo: calculate ideal defining the map
+
 	return(BO);
 }
