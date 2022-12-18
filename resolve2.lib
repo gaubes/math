@@ -3694,6 +3694,9 @@ EXAMPLE: example resolve;  shows an example
    {
       attrib(J,"isHy",0);
    }
+   
+//END OF INIT AND BEGIN OF THE PROCEDURE!!!-----------------------------   
+   
 //--- create the BO
    list BO=W,J,bvec,E,abb,v,w,intE;
    if(defined(invSat)){kill invSat;}
@@ -3705,7 +3708,7 @@ EXAMPLE: example resolve;  shows an example
    list tmpList;
    int blo;
    int k,Ecount,tmpPtr;
-   i=0;
+   i=1;
    if(smooth==-1)
    {
       endRings[1]=R;
@@ -3720,6 +3723,8 @@ EXAMPLE: example resolve;  shows an example
       kill debugCenter,debugBlowUp,debugCoeff,debug_Inters_E;
       return(result);
    }
+   
+   
 //-----------------------------------------------------------------------------
 // While there are rings to be considered, determine center and blow up
 //-----------------------------------------------------------------------------

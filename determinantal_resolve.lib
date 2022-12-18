@@ -177,8 +177,17 @@ EXAMPLE: example generic_resolve; shows an example
 	module path = [0,-1];												//path of the current chart, autoconverted to matrix
 	export(path);
 	
+	ideal W = ideal(0);													//ambient space; Maybe change this later
+	export(W);
+	list E = list();													// list of exceptional divisors
+	export(E);
+	ideal abb=maxideal(1);
+	export(abb);
+	
 	list BlowUpTree;
 	BlowUpTree[1] = basering;
+	ideal cent = minor(M,1);											//auxiliary data 
+	export(cent);
 	BlowUpTree = BlowUpTree +  CopyDataInNextChartsAndBlowUp(M,minor(M,1),1);
 	int i; int j; int k;
 	
@@ -214,6 +223,8 @@ EXAMPLE: example generic_resolve; shows an example
 		mindim = min(ncols(M),nrows(M));
 		if(minorsize[1] > 2){		//TODO!!! change value 2 ?
 			oldsize = size(BlowUpTree);
+			ideal cent = minor(M,1);									//auxiliary data 
+			export(cent);
 			BlowUpTree = BlowUpTree + CopyDataInNextChartsAndBlowUp(M,minor(M,1),i);
 			chart_counter = chart_counter + size(BlowUpTree) - oldsize;
 		}
@@ -229,7 +240,7 @@ proc generic_resolve(int m, list #)
 RETURN: list of rings which represent the charts during the whole resolution process
 EXAMPLE: example generic_resolve; shows an example
 "
-{							//generic matrix with m rows and n columns
+{						
 	int n, r;
 	list BlowUpTree;
 	if (size(#)>0){
@@ -300,9 +311,10 @@ EXAMPLE: example CopyDataInNextChartAndBlowUp; shows an example
 "
 {
 	int j, number_cols,number_rows;
+	int Edefined = 1;
 	def r = basering;
-	
-	list successorList = blowUp3(ideal(0),Center);
+	if(size(E) == 0){Edefined = 0;}
+	list successorList = blowUp3(W,Center);
 	int number_center_components = size(successorList);
 
 	for(j = 1;j<=number_center_components; j++){
@@ -310,7 +322,16 @@ EXAMPLE: example CopyDataInNextChartAndBlowUp; shows an example
 		
 		def newring = successorList[j];
 		setring(newring);
-		map BlowUpMap = r,bM;					
+		map BlowUpMap = r,bM;		
+		ideal W = BlowUpMap(W);
+		export(W);
+		if(!Edefined){ list E = list();}
+		else{list E = BlowUpMap(E);}
+		E[size(E)+1] = eD[1];
+		export(E);
+
+		ideal abb = BlowUpMap(abb);					//abbildung aus resolve.lib //TODO: mit bM verknuepfen!!!!
+		export(abb); 	
 		matrix N = BlowUpMap(M);				// total transform
 		export(N);
 		//matrix Ntmp = sat(N+sT,eD[1])[1];		// Achtung !!! Reihenfolge der Einträge und Dimension der neuen Matrix!!!
@@ -333,7 +354,7 @@ EXAMPLE: example CopyDataInNextChartAndBlowUp; shows an example
 	CopyDataInNextChartsAndBlowUp(M,std(minor(M,1)),1);	
 }
 
-//TODO:
+
 proc weakTransformOfMatrix(matrix N)	
 "USAGE: weakTransformOfMatrix(matrix N); given a blown up matrix N it calculates the weak transform of a matrix with respect to rows and columns
 RETURN: transformed matrix 
@@ -372,11 +393,7 @@ EXAMPLE: example weakTransformOfMatrix; shows an example
 		}
 	}
 	
-	//same factor out procedure for each column:
-	poly tmp_entry;
-	poly tmp_eDPowC;
-	int eDDividesRow;
-	
+	//same procedure for each column:
 	for(j=1; j<= number_cols;j++){
 		tmp_eDPowC = eD[1];
 		eDDividesRow = 1;
@@ -415,7 +432,7 @@ EXAMPLE: example weakTransformOfMatrix; shows an example
 }
 
 
-proc generic_gauss(matrix N, int number_rows, int number_cols)
+proc generic_gauss(matrix N, int number_rows, int number_cols)			//TODO: compute the map of abb
 "USAGE: generic_gauss(matrix N, int number_rows, int number_cols ); computes the gaussian steps in the resolution process.
 RETURN: transformed matrix M
 EXAMPLE: example generic_gauss; shows an example
@@ -465,18 +482,18 @@ EXAMPLE: example generic_gauss; shows an example
 	//Todo
 }
 
-proc skewsymmetric_gauss(matrix N, int number_rows, int number_cols)
+proc skewsymmetric_gauss(matrix N, int number_rows, int number_cols)	//TODO: compute the map of abb
 "USAGE: skewsymmetric_gauss(matrix N, int number_rows, int number_cols ); computes the gaussian steps in the resolution process.
 RETURN: transformed matrix M
 EXAMPLE: example skewsymmetric_gauss; shows an example
 "
 {		
 	int i,j,k,l;
-	intvec newcols, newrows, cols, rows;
+	intvec newcols, newrows;
 	intvec coordinatesOfOne;
 	
-	cols = 1..number_cols;
-	rows = 1..number_rows;
+	intvec cols = 1..number_cols;
+	intvec rows = 1..number_rows;
 
 	matrix redN = submat(N,rows,cols);
 	//destroys the skewsymmetric structure :
@@ -499,16 +516,13 @@ EXAMPLE: example skewsymmetric_gauss; shows an example
 	}
 	Ntemp = redN;
 
-
 	// let the column entries vanish:
 	for(l=1;l<=number_cols;l++){
 		if(coordinatesOfOne[2] != l){
 			redN[coordinatesOfOne[1],l] = 0;
 		}
 	}
-	
 	Ntemp = redN;
-
 	
 	for(i = 1; i <= number_rows; i++){							//column operations for the second 0-row
 		for(l = 1; l<=number_cols; l++){
@@ -518,7 +532,6 @@ EXAMPLE: example skewsymmetric_gauss; shows an example
 		}
 	}
 	Ntemp = redN;
-
 	
 	// let the column entries vanish:
 	for(i=1;i<=number_cols;i++){
@@ -547,7 +560,7 @@ EXAMPLE: example skewsymmetric_gauss; shows an example
 		//TODO
 }
 
-proc symmetric_gauss(matrix N, int number_rows, int number_cols)
+proc symmetric_gauss(matrix N, int number_rows, int number_cols)	//TODO: compute the map of abb
 "USAGE: symmetric_gauss(matrix N, int number_rows, int number_cols ); computes the gaussian steps in the resolution process.
 RETURN: transformed matrix M
 EXAMPLE: example symmetric_gauss; shows an example
@@ -743,4 +756,33 @@ EXAMPLE: example symmetric_transformation_of_variables; shows an example
 	return(newM, minorideal);	
 }example{
 	//TODO	
+}
+
+proc generate_BOList(){
+	//BO[1] ambient space Wi
+	//BO[2] ideal defining the strict transform
+	//BO[3] invariant ???
+	//BO[4] exceptional divisors E
+	//BO[5] ideal defining K[W] --> K[Wi]
+	//BO[6] ???
+	//BO[7] ???
+	//BO[8] matrix ???
+	//BO[9] ???
+	//BO[10] center cannot split into connected components in the generic case!
+	
+	//auxiliary data:
+	//cent defining the center
+	//path module which describes the path matrix
+	//lastMap ideal describing the preceding blow up leading to this chart
+	list BO;
+	BO[1] = W;					
+	BO[2] = minorideal;
+	
+	BO[4] = list();				//Todo: calculate list E of exceptional divisors 
+	BO[5] = ideal(0);			// Todo: calculate ideal defining the map
+	
+	
+	
+	
+	return(BO);
 }
