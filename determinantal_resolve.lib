@@ -155,17 +155,17 @@ EXAMPLE: example generic_resolve; shows an example
 		ERROR("choose a mode gen,sym or skew followed by the size of your generic matrix");
 	}
 	
-	list minorsize = list(min(ncols(M),nrows(M)),var(1) );							// default: resolve maximal minors; variable and list is only technically in order that we can store the list in the ring!!!
+	list minorsize = list(min(ncols(M),nrows(M)),var(1) );				// default: resolve maximal minors; variable and list is only technically in order that we can store the list in the ring!!!
 	ideal minorideal = minor(M,1);
 	if(size(#)>1 and mode == "gen"){
 		if(typeof(#[2])=="int"){
-			minorsize[1] = #[2];									//calculate how long we have to blow up until the #[1]-minors are resolved
+			minorsize[1] = #[2];										//calculate how long we have to blow up until the #[1]-minors are resolved
 			minorideal = minor(M,minorsize[1]);
 		}
 	}
 	if(size(#)>0 and mode != "gen"){
 		if(typeof(#[1])=="int"){
-			minorsize[1] = #[1];									//calculate how long we have to blow up until the #[1]-minors are resolved
+			minorsize[1] = #[1];										//calculate how long we have to blow up until the #[1]-minors are resolved
 			minorideal = minor(M,minorsize[1]);
 		}
 	}
@@ -174,7 +174,7 @@ EXAMPLE: example generic_resolve; shows an example
 
 	export(minorideal);
 	
-	module path = [0,-1];										//path of the current chart, autoconverted to matrix
+	module path = [0,-1];												//path of the current chart, autoconverted to matrix
 	export(path);
 	
 	list BlowUpTree;
@@ -201,17 +201,16 @@ EXAMPLE: example generic_resolve; shows an example
 			list transformationlist = generic_transformation_of_variables(M);			//Transformation for the new system of parameters
 		}
 		if(mode =="sym"){
-			matrix M = symmetric_gauss(Ntmp, number_rows,number_cols); 					// Reduction in Dimension
-			list transformationlist = symmetric_transformation_of_variables(M);			//Transformation for the new system of parameters
+			matrix M = symmetric_gauss(Ntmp, number_rows,number_cols); 					
+			list transformationlist = symmetric_transformation_of_variables(M);			
 		}
 		if(mode =="skew"){
-			matrix M = skewsymmetric_gauss(Ntmp, number_rows,number_cols); 					// Reduction in Dimension
-			list transformationlist = skewsymmetric_transformation_of_variables(M);			//Transformation for the new system of parameters
+			matrix M = skewsymmetric_gauss(Ntmp, number_rows,number_cols); 					
+			list transformationlist = skewsymmetric_transformation_of_variables(M);			
 		}
 		M = transformationlist[1];
 		ideal minorideal = transformationlist[2];
 		export(minorideal); 
-
 		mindim = min(ncols(M),nrows(M));
 		if(minorsize[1] > 2){		//TODO!!! change value 2 ?
 			oldsize = size(BlowUpTree);
@@ -335,7 +334,7 @@ EXAMPLE: example CopyDataInNextChartAndBlowUp; shows an example
 }
 
 //TODO:
-proc weakTransformOfMatrix(matrix N)
+proc weakTransformOfMatrix(matrix N)	
 "USAGE: weakTransformOfMatrix(matrix N); given a blown up matrix N it calculates the weak transform of a matrix with respect to rows and columns
 RETURN: transformed matrix 
 EXAMPLE: example weakTransformOfMatrix; shows an example
@@ -347,14 +346,47 @@ EXAMPLE: example weakTransformOfMatrix; shows an example
 	int number_cols = ncols(N);
 	
 	
-	//TODO: for the general case!!! find max exponent c such that we can factor out eD[1]^c
+	//find maximal value  c such that we can factor out eD[1]^c in each row:
+	exponent = 1;
+	poly tmp_entry;
+	poly tmp_eDPowC;
+	int eDDividesRow;
 	
-	for(i = 1; i<= number_rows;i++){
+	for(i=1; i<= number_rows;i++){
+		tmp_eDPowC = eD[1];
+		eDDividesRow = 1;
+		while(eDDividesRow){
+			for(j=1; j<=number_cols; j++){
+				tmp_entry = N[i,j] div tmp_eDPowC;						
+				if(tmp_entry == 0){
+					eDDividesRow = 0;
+					break;
+				}
+			}
+			if(eDDividesRow){
+				tmp_eDPowC = tmp_eDPowC * eD[1];
+			}else{
+				tmp_eDPowC = tmp_eDPowC div eD[1];
+			}
+		}
 		for(j = 1; j<= number_cols; j++){
-			N[i,j] = N[i,j] div eD[1];
+			N[i,j] = N[i,j] div tmp_eDPowC;
 		}
 	}
+	
 	return(N);
+}example{
+	ring r = 0,(x(1..9)),dp;
+	matrix N[3][3] = x(1),x(1)*x(2),x(1)*x(3),x(1)*x(4),x(1)*x(5),x(1)*x(6),x(1)*x(7),x(1)*x(8),x(1)*x(9); 
+	print(N);
+	list eD;
+	eD[1] = x(1);
+	export(eD);
+	weakTransformOfMatrix(N);
+	
+	matrix N[3][3] = x(1)^2,x(1)^2*x(2),x(1)^3*x(3),x(1)*x(4),x(1)*x(5),x(1)*x(6),x(1)^5*x(7),x(1)^4*x(8),x(1)*x(9); 
+	print(N);
+	weakTransformOfMatrix(N);
 }
 
 
@@ -370,7 +402,7 @@ EXAMPLE: example generic_gauss; shows an example
 	
 	cols = 1..number_cols;
 	rows = 1..number_rows;
-	matrix N2 = submat(N,rows,cols);	//Gaussian steps
+	matrix N2 = submat(N,rows,cols);		//Gaussian steps
 	matrix colN = colred(N2);
 	matrix redN = rowred(colN);
 	
@@ -427,13 +459,13 @@ EXAMPLE: example skewsymmetric_gauss; shows an example
 	
 	for(j = 1; j<= number_rows;j++){
 		for(k = 1; k<= number_cols;k++){
-			if(redN[j,k] == 1) {coordinatesOfOne = j,k;}
+			if(redN[j,k] == 1) {coordinatesOfOne = j,k;}				// 1 at position [j,k] -> choose submatrix without this entry
 		} 
-	}										// 1 at position [j,k] -> choose submatrix without this entry
+	}										
 	
 	matrix Ntemp = redN;
 	//[j,k] is the entry which equals 1 -> [k,j] equals -1
-	for(i = 1; i <= number_rows; i++){							//row operations for the first 0-column
+	for(i = 1; i <= number_rows; i++){									//row operations for the first 0-column
 		for(l = 1; l<=number_cols; l++){
 			if(i != coordinatesOfOne[1] and i != coordinatesOfOne[2]){
 				redN[i,l] = Ntemp[i,l] - Ntemp[i,coordinatesOfOne[2]] * Ntemp[coordinatesOfOne[1],l];
@@ -511,7 +543,6 @@ EXAMPLE: example symmetric_gauss; shows an example
 		} 
 	}										// 1 at position [j,k] -> choose submatrix without this entry
 	
-	//if(size(coordinatesOfOne) == 1){~;}
 	epsilon = 1-redN[coordinatesOfOne[1],coordinatesOfOne[1]] * redN[coordinatesOfOne[2],coordinatesOfOne[2]];
 	
 	matrix Ntemp = redN;
@@ -534,9 +565,9 @@ EXAMPLE: example symmetric_gauss; shows an example
 			}
 		}
 		Ntemp = redN;
-		minorsize[1] = minorsize[1] - 1;	//internal note that the desired minorsize has decrease
+		minorsize[1] = minorsize[1] - 1;								//internal note that the desired minorsize has decrease
 	}else{			//non-diagonal 1-entries [j,k] and [k,j]
-		for(i = 1; i <= number_rows; i++){							//row operations for the first 0-column
+		for(i = 1; i <= number_rows; i++){								//row operations for the first 0-column
 			for(l = 1; l<=number_cols; l++){
 				if(i != coordinatesOfOne[2]){
 					redN[i,l] = Ntemp[i,l] - Ntemp[i,coordinatesOfOne[1]] * Ntemp[coordinatesOfOne[2],l];
@@ -567,7 +598,7 @@ EXAMPLE: example symmetric_gauss; shows an example
 		}
 		
 		Ntemp = redN;
-		for(i = 1; i <= number_rows; i++){							//row operations for the second 0-column
+		for(i = 1; i <= number_rows; i++){								//row operations for the second 0-column
 			for(l = 1; l<=number_cols; l++){
 				if(i != coordinatesOfOne[1]){
 					redN[i,l] = Ntemp[i,l] - Ntemp[i,coordinatesOfOne[2]] * Ntemp[coordinatesOfOne[1],l];
@@ -583,13 +614,13 @@ EXAMPLE: example symmetric_gauss; shows an example
 			}
 		}
 		Ntemp = redN;
-		minorsize[1] = minorsize[1] - 2;	//internal note that the desired minorsize has decrease
+		minorsize[1] = minorsize[1] - 2;								//internal note that the desired minorsize has decrease
 	}
 	
 	int changed = 0;
 	for(i=1;i<=number_cols;i++){
 		if(i != coordinatesOfOne[1] and i != coordinatesOfOne[2]){
-			if(changed == 0){						// because we do not need a leading zero-entry in the intvec newcols
+			if(changed == 0){											// because we do not need a leading zero-entry in the intvec newcols
 				newcols[1] = i;	
 				changed = 1;
 			}else{
@@ -615,16 +646,16 @@ EXAMPLE: example generic_transformation_of_variables; shows an example
 	
 	int number_cols = ncols(M);
 	int number_rows = nrows(M);
-	int new_nvars = 1; 											// init = 0; counts the new necessary variables
+	int new_nvars = 1; 											
 	matrix newM = M;
 	
-	for(i = 1; i<= number_rows; i++){							//Todo: right order of cols and rows???
+	for(i = 1; i<= number_rows; i++){							
 		for(j = 1; j<= number_cols; j++){
 			newM[i,j] = var(new_nvars);
 			new_nvars++;
 		}
 	}
-	ideal minorideal = minor(newM,minorsize[1]);				//Calculate minor ideal of the right size
+	ideal minorideal = minor(newM,minorsize[1]);					//Calculate minor ideal of the right size
 					
 	return(newM, minorideal);
 }example{
@@ -643,10 +674,10 @@ EXAMPLE: example skewsymmetric_transformation_of_variables; shows an example
 	
 	int number_cols = ncols(M);
 	int number_rows = nrows(M);
-	int new_nvars = 1; 											// init = 0; counts the new necessary variables
+	int new_nvars = 1; 											
 	matrix newM = M;
 
-	for(i = 1; i<= number_rows; i++){							//Todo: right order of cols and rows???
+	for(i = 1; i<= number_rows; i++){							
 		for(j = i+1; j<= number_cols; j++){
 			if(M[i,j] != 0){
 				newM[i,j] = var(new_nvars);
@@ -655,7 +686,7 @@ EXAMPLE: example skewsymmetric_transformation_of_variables; shows an example
 			}
 		}
 	}
-	ideal minorideal = minor(newM,minorsize[1]);				//Calculate minor ideal of the right size
+	ideal minorideal = minor(newM,minorsize[1]);						//Calculate minor ideal of the right size
 	return(newM, minorideal);	
 }example{
 	//TODO	
@@ -671,10 +702,10 @@ EXAMPLE: example symmetric_transformation_of_variables; shows an example
 	
 	int number_cols = ncols(M);
 	int number_rows = nrows(M);
-	int new_nvars = 1; 											// init = 0; counts the new necessary variables
+	int new_nvars = 1; 											
 	matrix newM = M;
 
-	for(i = 1; i<= number_rows; i++){							//Todo: right order of cols and rows???
+	for(i = 1; i<= number_rows; i++){							
 		for(j = i; j<= number_cols; j++){
 			if(M[i,j] != 0){
 				newM[i,j] = var(new_nvars);
@@ -683,7 +714,7 @@ EXAMPLE: example symmetric_transformation_of_variables; shows an example
 			}
 		}
 	}
-	ideal minorideal = minor(newM,minorsize[1]);				//Calculate minor ideal of the right size
+	ideal minorideal = minor(newM,minorsize[1]);						//Calculate minor ideal of the right size
 	return(newM, minorideal);	
 }example{
 	//TODO	
