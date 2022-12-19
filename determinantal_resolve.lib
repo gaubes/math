@@ -127,7 +127,95 @@ example
    eD;
    bM;
 }
+//----------------------------------------------------------------------
+//TODO
+proc determinantal_resolve(matrix M, int r){
+	
+	
+	
+	
+	ideal minorideal = minor(M,r);
+	list minorsize = list(min(ncols(M),nrows(M)),var(1) );				//  variable and list is only technically in order that we can store the list in the ring!!!
+	export(minorideal);
+	export(minorsize);
+	
+	module path = [0,-1];												//path of the current chart, autoconverted to matrix
+	export(path);
+	
+	ideal W = ideal(0);													//ambient space; Maybe change this later
+	export(W);
+	list E = list();													// list of exceptional divisors
+	export(E);
+	ideal abb=maxideal(1);
+	export(abb);
+	
+	list BlowUpTree;
+	BlowUpTree[1] = basering;
+	//------------------------------------------------------------------
+	//TODO
+	//find out in which of the 4 statusses we are (binomial -> local monomial -> HU -> Gauss)
+	//TODO 
+	//compute the center
+	ideal cent = minor(M,1);	//TODO ersetzen!!!
+	export(cent);
+	BlowUpTree = BlowUpTree +  CopyDataInNextChartsAndBlowUp(M,cent,1);
+	
+	int i; int j; int k;
+	
+	int number_cols, number_rows;
+	int mindim;
+	int chart_counter = size(BlowUpTree);
+	
+	int oldsize;
+	
+	for(i = 2; i<= size(BlowUpTree);i++){			
+		if(defined(XijChart)){
+			kill(XijChart);
+		}
+		def XijChart = BlowUpTree[i];
+		setring(XijChart);
 
+		number_cols = ncols(N);
+		number_rows = nrows(N);
+	
+	
+		//compute in which stadium we are
+		// if gauss ... calculate a covering and a system of parameters like in the general case and afterwards do generic gauss  
+		ideal minorideal = transformationlist[2];
+		export(minorideal); 
+		mindim = min(ncols(M),nrows(M));
+					
+		list BOList = generate_BOList(M);
+		export(BOList);
+		
+		//TODO:
+		if(minorsize[1] > 2){		//TODO!!! change value 2 ?
+			oldsize = size(BlowUpTree);
+			ideal cent = minor(M,1);									//TODO: ersetzen
+			export(cent);
+			BlowUpTree = BlowUpTree + CopyDataInNextChartsAndBlowUp(M,cent,i);
+			chart_counter = chart_counter + size(BlowUpTree) - oldsize;
+		}
+	}
+	
+	
+	
+	//TODO
+	//------------------------------------------------------------------
+	return(BlowUpTree);
+}
+
+
+
+
+
+
+
+//----------------------------------------------------------------------
+
+// 				generic case
+
+//----------------------------------------------------------------------
 proc main_generic_resolve(string mode, int m, list #)
 "USAGE:main_generic_resolve(string mode, int m[, int n , int r] ); computes the resolution of the ideal of r-minors of a (skew)-symmetric generic mxm matrix with mode = skew or mode = sym or generic mxn matrix with mode = gen
 RETURN: list of rings which represent the charts during the whole resolution process
@@ -787,3 +875,6 @@ proc generate_BOList(matrix M){
 
 	return(BO);
 }
+//additional data in the determinantal case:
+// correspondence between sublist of polynomials and position of the corresponding entry in the matrix
+ 
