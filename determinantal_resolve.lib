@@ -26,6 +26,7 @@ PROCEDURES:
 
 LIB "matrix.lib";
 LIB "resolve.lib";
+LIB "general.lib";	//absValue
 
 
 proc blowUp3(ideal J,ideal C,list #)
@@ -151,12 +152,14 @@ proc determinantal_resolve(matrix M, int r){
 	
 	list BlowUpTree;
 	BlowUpTree[1] = basering;
+	
+	string status;
 	//------------------------------------------------------------------
 	//TODO
-	//find out in which of the 4 statusses we are (binomial -> local monomial -> HU -> Gauss)
+	status = calculate_process_of_center_calculation(M);
 	//TODO 
 	//compute the center
-	ideal cent = minor(M,1);	//TODO ersetzen!!!
+	ideal cent = minor(M,1);	//TODO ersetzen!!! //maybe a list? only for Hu ? and a flag for 'Hu is finished'
 	export(cent);
 	BlowUpTree = BlowUpTree +  CopyDataInNextChartsAndBlowUp(M,cent,1);
 	
@@ -180,7 +183,8 @@ proc determinantal_resolve(matrix M, int r){
 	
 	
 		//compute in which stadium we are
-		// if gauss ... calculate a covering and a system of parameters like in the general case and afterwards do generic gauss  
+		// if simultaneously locally monomial ... calculate a covering and a system of parameters like in the general case 
+		// if gauss do generic gauss  
 		ideal minorideal = transformationlist[2];
 		export(minorideal); 
 		mindim = min(ncols(M),nrows(M));
@@ -189,6 +193,7 @@ proc determinantal_resolve(matrix M, int r){
 		export(BOList);
 		
 		//TODO:
+		status = calculate_process_of_center_calculation(M);
 		if(minorsize[1] > 2){		//TODO!!! change value 2 ?
 			oldsize = size(BlowUpTree);
 			ideal cent = minor(M,1);									//TODO: ersetzen
@@ -205,7 +210,93 @@ proc determinantal_resolve(matrix M, int r){
 	return(BlowUpTree);
 }
 
+//----------------------------------------------------------------------
+proc calculate_process_of_center_calculation(matrix M){
+	int i,j,k;
+	
+	int number_cols = ncols(M);
+	int number_rows = nrows(M);
+	
+	string mode;
+	
+	if(LocallyMonomial == 0){
+		mode = "binresol";
+		return(mode);
+	}
+	//if not simultanoeusly locally monomial:
+	//TODO
+	mode = "Hu";
+	
+	//if simultaneously locally monomial and not monomial:
+	//TODO
+	mode = "transformation";
+	if(isMonomial(M) == 1 and isresolvedMonomial(M) == 0){ 
+		mode = "monomial";
+		return(mode);
+	}
+	if(isresolvedMonomial(M) == 1){
+		mode = "gauss";
+		return(mode);
+	}
+	return(mode);
+}
+//----------------------------------------------------------------------
 
+
+proc isLocallyMonomial(matrix M){ // only 1-x^A equations allowed
+	int i,j,k;
+	int LocallyMonomial = 1;
+	int number_cols = ncols(M);
+	int number_rows = nrows(M);
+	
+	for(i=1;i<=number_rows;i++){
+		for(j=1; j<= number_cols; j++){
+			if(size(M[i,j])>1){				// at least binomial
+				if(absValue(M[i,j][1]) == 1 or absValue(M[i,j][2]) == 1){		//M[i,j] = 1-x^A or x^A-1
+					LocallyMonomial = 0;
+				}
+			}
+		}
+	}	
+	return(LocallyMonomial);
+}
+//----------------------------------------------------------------------
+
+proc isMonomial(matrix M){ // only x^A equations allowed
+	int i,j,k;
+	int Monomial = 1;
+	int number_cols = ncols(M);
+	int number_rows = nrows(M);
+	
+	for(i=1;i<=number_rows;i++){
+		for(j=1; j<= number_cols; j++){
+			if(size(M[i,j])>1){				// at least binomial
+				Monomial = 0;
+			}
+		}
+	}	
+	return(Monomial);
+}
+//----------------------------------------------------------------------
+proc isresolvedMonomial(matrix M){ // only x^A equations allowed
+	int i,j,k;
+	int resolved = 0;
+	int number_cols = ncols(M);
+	int number_rows = nrows(M);
+	
+	if(isMonomial(M) == 0){
+		Error("Not monomial Matrix");
+	}
+	for(i=1;i<=number_rows;i++){
+		for(j=1; j<= number_cols; j++){
+			if(size(M[i,j])=1){				// at least binomial
+				resolved = 1;
+			}
+		}
+	}		
+		
+	return(resolved);
+}
 
 
 
