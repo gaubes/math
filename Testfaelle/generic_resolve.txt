@@ -1,0 +1,1 @@
+ binomial: -x(3)*x(5)*x(7)+x(2)*x(6)*x(7)+x(3)*x(4)*x(8)-x(1)*x(6)*x(8)-x(2)*x(4)*x(9)+x(1)*x(5)*x(9)	endcharts: 10	charts: 10

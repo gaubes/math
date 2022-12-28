@@ -983,3 +983,60 @@ proc generate_BOList(matrix M){
 //additional data in the determinantal case:
 // correspondence between sublist of polynomials and position of the corresponding entry in the matrix
  
+//----------------------------------------------------------------------
+
+proc test_generic_vs_resolve(int m,int n){
+
+	link l2 = ":w Testfaelle/resolve.txt";
+	link l1 = ":w Testfaelle/generic_resolve.txt";
+	
+	list linklist = list(l1,l2);
+	int i; int j;
+	ring r = 0,(x(1..m*n)),dp;
+	matrix M = genericmat(m,n);
+	ideal I = minor(M,min(m,n));		//maximal minors
+	list blowuplist;
+	
+	list sum_runtime = list(0,0,0,0);
+	list sum_endcharts = list(0,0,0,0);
+	list sum_charts = list(0,0,0,0);
+	
+	
+	//Test binomial-calculations:
+	//for(j=1;j<=binomialcount;j++){
+		//f = create_test_binomial(maxdegree, mode);
+	
+		blowuplist = generic_resolve(m,n);
+			
+		//fprintf(linklist[i],"binomial: %l	endcharts: %s	charts: %s	runtime: %s",f,blowuplist[2],size(blowuplist[1]),blowuplist[4]);	
+		fprintf(linklist[1]," binomial: %s	endcharts: %s	charts: %s",I,blowuplist[2],size(blowuplist[1]));	
+		// only for later stats calculations:
+		
+		//sum_runtime[i] = sum_runtime[i] + blowuplist[4];
+		//sum_endcharts[i] = sum_endcharts[i] + blowuplist[2];
+		//sum_charts[i] = sum_charts[i] + size(blowuplist[1]);
+		
+		blowuplist = resolve(I);	
+		fprintf(linklist[2]," binomial: %s	endcharts: %s	charts: %s",I,blowuplist[2],size(blowuplist[1]));
+		
+	//}
+	
+	
+	//compute average values:
+	//list average_runtime 	= list(sum_runtime[1] div binomialcount, sum_runtime[2] div binomialcount, sum_runtime[3] div binomialcount, sum_runtime[4] div binomialcount); 
+	//list average_endcharts 	= list(sum_endcharts[1] div binomialcount, sum_endcharts[2] div binomialcount, sum_endcharts[3] div binomialcount, sum_endcharts[4] div binomialcount);
+	//list average_charts 	= list(sum_charts[1] div binomialcount, sum_charts[2] div binomialcount, sum_endcharts[3] div binomialcount, sum_endcharts[4] div binomialcount);
+	
+	//compute the stats:
+	//for(i = 1;i<=size(linklist);i++){
+	//	fprintf(linklist[i],"average-endcharts: %s	average-charts: %s	average-runtime: %s",average_endcharts[i],average_charts[i],average_runtime[i]);	
+	//}
+	
+	//close files:
+	close(l1);
+	close(l2);
+	//close(l3);
+	//close(l4);
+	
+	
+}
