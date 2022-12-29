@@ -37,6 +37,7 @@ LIB "matrix.lib";
 LIB "resolve.lib";
 LIB "general.lib";	//absValue
 
+LIB "resbinomial.lib"; //only for performancetests
 
 proc blowUp3(ideal J,ideal C,list #)
 "USAGE:  blowUp3(J,C[,W][,E]);
@@ -327,6 +328,7 @@ RETURN: list of rings which represent the charts during the whole resolution pro
 EXAMPLE: example generic_resolve; shows an example
 "
 {
+	int minsize;
 	if(mode == "gen"){
 		if(size(#)>0){
 			int n = #[1];
@@ -335,14 +337,17 @@ EXAMPLE: example generic_resolve; shows an example
 		}
 		ring r = 0,(x(1..m*n)),dp;
 		matrix M = genericmat(m,n);
+		minsize = 1;
 	}
 	if(mode == "sym"){
 		ring r = 0,(x(1..m*(m+1) div 2)),dp;
 		matrix M = symmat(m);
+		minsize = 1;			//TODO???
 	}
 	if(mode == "skew"){
 		ring r = 0,(x(1..m*(m-1)div 2)),dp;
 		matrix M = skewmat(m);
+		minsize = 2;
 	}
 	if(!defined(r)){
 		ERROR("choose a mode gen,sym or skew followed by the size of your generic matrix");
@@ -381,12 +386,18 @@ EXAMPLE: example generic_resolve; shows an example
 	BlowUpTree[1] = basering;
 	ideal cent = minor(M,1);											//auxiliary data 
 	export(cent);
+	
+	if(minorsize[1] <= 1){													// ideal of 1 minors is already resolved
+		return(BlowUpTree,1,1);
+	}
+	
 	BlowUpTree = BlowUpTree +  CopyDataInNextChartsAndBlowUp(M,minor(M,1),1);
 	int i; int j; int k;
 	
 	int number_cols, number_rows;
 	int mindim;
 	int chart_counter = size(BlowUpTree);
+	int end_chart_counter;
 	
 	int oldsize;
 	for(i = 2; i<= size(BlowUpTree);i++){			
@@ -418,15 +429,17 @@ EXAMPLE: example generic_resolve; shows an example
 		list BOList = generate_BOList(M);
 		export(BOList);
 		
-		if(minorsize[1] > 2){		//TODO!!! change value 2 ?
+		if(minorsize[1] > minsize){		//TODO!!! depends on the mode
 			oldsize = size(BlowUpTree);
 			ideal cent = minor(M,1);									//auxiliary data 
 			export(cent);
 			BlowUpTree = BlowUpTree + CopyDataInNextChartsAndBlowUp(M,minor(M,1),i);
 			chart_counter = chart_counter + size(BlowUpTree) - oldsize;
+		}else{
+			end_chart_counter++;
 		}
 	}
-	return(BlowUpTree,chart_counter);
+	return(BlowUpTree,chart_counter,end_chart_counter);
 	
 	
 	
@@ -573,10 +586,12 @@ EXAMPLE: example weakTransformOfMatrix; shows an example
 		eDDividesRow = 1;
 		while(eDDividesRow){
 			for(j=1; j<=number_cols; j++){
-				tmp_entry = N[i,j] div tmp_eDPowC;						
-				if(tmp_entry == 0){
-					eDDividesRow = 0;
-					break;
+				if(N[i,j] != 0){									// without this, a skewsymmetric matrix is returned as total transform because of the zero entries
+					tmp_entry = N[i,j] div tmp_eDPowC;						
+					if(tmp_entry == 0){
+						eDDividesRow = 0;
+						break;
+					}
 				}
 			}
 			if(eDDividesRow){
@@ -687,7 +702,7 @@ EXAMPLE: example skewsymmetric_gauss; shows an example
 {		
 	int i,j,k,l;
 	intvec newcols, newrows;
-	intvec coordinatesOfOne;
+	intvec coordinatesOfOne = 0,0;
 	
 	intvec cols = 1..number_cols;
 	intvec rows = 1..number_rows;
@@ -701,6 +716,7 @@ EXAMPLE: example skewsymmetric_gauss; shows an example
 			if(redN[j,k] == 1) {coordinatesOfOne = j,k;}				// 1 at position [j,k] -> choose submatrix without this entry
 		} 
 	}										
+	if(coordinatesOfOne[1] == 0){~;}
 	
 	matrix Ntemp = redN;
 	//[j,k] is the entry which equals 1 -> [k,j] equals -1
@@ -994,32 +1010,37 @@ proc test_generic_vs_resolve(int m,int n){
 	int i; int j;
 	ring r = 0,(x(1..m*n)),dp;
 	matrix M = genericmat(m,n);
-	ideal I = minor(M,min(m,n));		//maximal minors
+	int minorsize = min(m,n);
+	ideal I = minor(M,minorsize);		//maximal minors
 	list blowuplist;
 	
 	list sum_runtime = list(0,0,0,0);
 	list sum_endcharts = list(0,0,0,0);
 	list sum_charts = list(0,0,0,0);
-	
+	int runningtime = 0;
+	int whole_runningtime = 0;
+	int tmp_runningtime = 0;
 	
 	//Test binomial-calculations:
-	//for(j=1;j<=binomialcount;j++){
+	for(minorsize=1;minorsize<=min(m,n); minorsize++){
 		//f = create_test_binomial(maxdegree, mode);
-	
-		blowuplist = generic_resolve(m,n);
-			
+		I = minor(M,minorsize);
+		tmp_runningtime = rtimer;
+		blowuplist = generic_resolve(m,n,minorsize);
+		runningtime = rtimer - tmp_runningtime;	
 		//fprintf(linklist[i],"binomial: %l	endcharts: %s	charts: %s	runtime: %s",f,blowuplist[2],size(blowuplist[1]),blowuplist[4]);	
-		fprintf(linklist[1]," binomial: %s	endcharts: %s	charts: %s",I,blowuplist[2],size(blowuplist[1]));	
+		fprintf(linklist[1]," Matrix: %s	minorsize: %s	endcharts: %s	charts: %s	running time: %s",M,minorsize,blowuplist[3],blowuplist[2], runningtime);	
 		// only for later stats calculations:
 		
 		//sum_runtime[i] = sum_runtime[i] + blowuplist[4];
 		//sum_endcharts[i] = sum_endcharts[i] + blowuplist[2];
 		//sum_charts[i] = sum_charts[i] + size(blowuplist[1]);
+		tmp_runningtime = rtimer;
+		blowuplist = resolve(I);
+		runningtime = rtimer - tmp_runningtime;	
+		fprintf(linklist[2]," Matrix: %s	minorsize: %s	endcharts: %s	charts: %s	running time: %s", M,minorsize,size(blowuplist[1]),size(blowuplist[2]), runningtime);
 		
-		blowuplist = resolve(I);	
-		fprintf(linklist[2]," binomial: %s	endcharts: %s	charts: %s",I,blowuplist[2],size(blowuplist[1]));
-		
-	//}
+	}
 	
 	
 	//compute average values:
@@ -1037,6 +1058,119 @@ proc test_generic_vs_resolve(int m,int n){
 	close(l2);
 	//close(l3);
 	//close(l4);
+}
+
+
+proc test_skew_vs_resolve(int m){
+
+	link l2 = ":w Testfaelle/resolve.txt";
+	link l1 = ":w Testfaelle/skew_generic.txt";
+	
+	list linklist = list(l1,l2);
+	int i; int j;
+	ring r = 0,(x(1..m*(m+1) div 2)),dp;
+	matrix M = symmat(m);
+	int minorsize = m;
+	ideal I = minor(M,minorsize);		//maximal minors
+	list blowuplist;
+	
+	int runningtime = 0;
+	int whole_runningtime = 0;
+	int tmp_runningtime = 0;
+	
+	//Test binomial-calculations:
+	for(minorsize=m;minorsize>=2; minorsize=minorsize-2){
+		//f = create_test_binomial(maxdegree, mode);
+		I = minor(M,minorsize);
+		tmp_runningtime = rtimer;
+		blowuplist = skewsymmetric_resolve(m,minorsize);
+		runningtime = rtimer - tmp_runningtime;	
+		//fprintf(linklist[i],"binomial: %l	endcharts: %s	charts: %s	runtime: %s",f,blowuplist[2],size(blowuplist[1]),blowuplist[4]);	
+		fprintf(linklist[1]," Matrix: %s	minorsize: %s	endcharts: %s	charts: %s	running time: %s",M,minorsize,blowuplist[3],blowuplist[2], runningtime);	
+		// only for later stats calculations:
+		
+		//sum_runtime[i] = sum_runtime[i] + blowuplist[4];
+		//sum_endcharts[i] = sum_endcharts[i] + blowuplist[2];
+		//sum_charts[i] = sum_charts[i] + size(blowuplist[1]);
+		tmp_runningtime = rtimer;
+		blowuplist = resolve(I);
+		runningtime = rtimer - tmp_runningtime;	
+		fprintf(linklist[2]," Matrix: %s	minorsize: %s	endcharts: %s	charts: %s	running time: %s", M,minorsize,size(blowuplist[1]),size(blowuplist[2]), runningtime);
+		
+	}
 	
 	
+	//compute average values:
+	//list average_runtime 	= list(sum_runtime[1] div binomialcount, sum_runtime[2] div binomialcount, sum_runtime[3] div binomialcount, sum_runtime[4] div binomialcount); 
+	//list average_endcharts 	= list(sum_endcharts[1] div binomialcount, sum_endcharts[2] div binomialcount, sum_endcharts[3] div binomialcount, sum_endcharts[4] div binomialcount);
+	//list average_charts 	= list(sum_charts[1] div binomialcount, sum_charts[2] div binomialcount, sum_endcharts[3] div binomialcount, sum_endcharts[4] div binomialcount);
+	
+	//compute the stats:
+	//for(i = 1;i<=size(linklist);i++){
+	//	fprintf(linklist[i],"average-endcharts: %s	average-charts: %s	average-runtime: %s",average_endcharts[i],average_charts[i],average_runtime[i]);	
+	//}
+	
+	//close files:
+	close(l1);
+	close(l2);
+	//close(l3);
+	//close(l4);
+}
+
+
+
+
+
+proc binomial_test_generic_vs_resbinomial(int m){		//only 2-minors of generic jxj matrices for 2<=j<=m
+
+	link l3 = ":w Testfaelle/resbinomial.txt";
+	
+	link l2 = ":w Testfaelle/binomial_resolve.txt";
+	link l1 = ":w Testfaelle/binomial_generic_resolve.txt";
+	
+	list linklist = list(l1,l2,l3);
+	int i; int j;
+	ring r = 0,(x(1..m*m)),dp;
+	matrix M = genericmat(m,m);
+	int minorsize = 2;
+	ideal I = minor(M,minorsize);		//maximal minors
+	list blowuplist;
+	
+	list sum_runtime = list(0,0,0,0);
+	list sum_endcharts = list(0,0,0,0);
+	list sum_charts = list(0,0,0,0);
+	int runningtime = 0;
+	int whole_runningtime = 0;
+	int tmp_runningtime = 0;
+	
+	//Test binomial-calculations:
+	for(j=2;j<=m;j++){
+		//f = create_test_binomial(maxdegree, mode);
+		M = genericmat(j,j);
+		I = minor(M,minorsize);
+		tmp_runningtime = rtimer;
+		blowuplist = generic_resolve(j,j,minorsize);
+		runningtime = rtimer - tmp_runningtime;	
+		//fprintf(linklist[i],"binomial: %l	endcharts: %s	charts: %s	runtime: %s",f,blowuplist[2],size(blowuplist[1]),blowuplist[4]);	
+		fprintf(linklist[1]," Matrix: %s	minorsize: %s	endcharts: %s	charts: %s	running time: %s",M,minorsize,blowuplist[3],blowuplist[2], runningtime);	
+		
+
+		//tmp_runningtime = rtimer;
+		//blowuplist = resolve(I);
+		//runningtime = rtimer - tmp_runningtime;	
+		//fprintf(linklist[2]," Matrix: %s	minorsize: %s	endcharts: %s	charts: %s	running time: %s", M,minorsize,size(blowuplist[1]),size(blowuplist[2]), runningtime);
+
+		tmp_runningtime = rtimer;
+		blowuplist = BINresol(I);
+		runningtime = rtimer - tmp_runningtime;	
+		fprintf(linklist[3]," Matrix: %s	minorsize: %s	endcharts: %s	charts: %s	running time: %s", M,minorsize,size(blowuplist[1]),size(blowuplist[2]), runningtime);
+
+
+	}
+	
+	//close files:
+	close(l1);
+	close(l2);
+	close(l3);
+
 }
