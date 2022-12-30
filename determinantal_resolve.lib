@@ -143,7 +143,6 @@ example
 proc determinantal_resolve(matrix M, int r){
 	
 	
-	
 	ideal minorideal = minor(M,r);
 	list minorsize = list(min(ncols(M),nrows(M)),var(1) );				//  variable and list is only technically in order that we can store the list in the ring!!!
 	export(minorideal);
@@ -261,13 +260,22 @@ proc isLocallyMonomial(matrix M){ // only 1-x^A equations allowed
 	for(i=1;i<=number_rows;i++){
 		for(j=1; j<= number_cols; j++){
 			if(size(M[i,j])>1){				// at least binomial
-				if(absValue(M[i,j][1]) == 1 or absValue(M[i,j][2]) == 1){		//M[i,j] = 1-x^A or x^A-1
+				if(absValue(M[i,j][1]) != 1 and absValue(M[i,j][2]) != 1){		//M[i,j] = 1-x^A or x^A-1
 					LocallyMonomial = 0;
 				}
 			}
 		}
 	}	
 	return(LocallyMonomial);
+}example{
+	ring r =0, (x,y,z),dp;
+	matrix M[3][2] = x,y,z,xy,1-x*y*z,2x;
+	print(M);
+	isLocallyMonomial (M);
+	
+	matrix N[3][2] = x^2+y,y,z,xy,1-x^3*y,2x;
+	print(N);
+	isLocallyMonomial (N);
 }
 //----------------------------------------------------------------------
 proc isSimultaneouslyLocallyMonomial(matrix M){
@@ -286,16 +294,25 @@ proc isMonomial(matrix M){ // only x^A equations allowed
 	
 	for(i=1;i<=number_rows;i++){
 		for(j=1; j<= number_cols; j++){
-			if(size(M[i,j])>1){				// at least binomial
+			if(size(M[i,j]) > 1){				// at least binomial
 				Monomial = 0;
 			}
 		}
 	}	
 	return(Monomial);
+}example{
+	ring r =0, (x,y,z),dp;
+	matrix M[3][2] = x,y^3,z,xy,x*y*z,2x;
+	print(M);
+	isMonomial (M);
+	
+	matrix N[3][2] = x^2,y,z,xy,1-x^3*y,2x;
+	print(N);
+	isMonomial (N);
 }
 //----------------------------------------------------------------------
 proc isresolvedMonomial(matrix M){ // only x^A equations allowed
-	int i,j,k;
+	int i,j;
 	int resolved = 0;
 	int number_cols = ncols(M);
 	int number_rows = nrows(M);
@@ -305,12 +322,90 @@ proc isresolvedMonomial(matrix M){ // only x^A equations allowed
 	}
 	for(i=1;i<=number_rows;i++){
 		for(j=1; j<= number_cols; j++){
-			if(size(M[i,j])=1){				// at least binomial
+			if(size(M[i,j])==1){				// at least binomial
 				resolved = 1;
 			}
 		}
 	}				
 	return(resolved);
+}example{
+	ring r =0, (x,y,z),dp;
+	matrix M[3][2] = x,y^3,z,xy,x*y*z,2x;
+	print(M);
+	isresolvedMonomial (M);
+	
+	matrix N[3][2] = x^2,y,z,xy,1,2x;
+	print(N);
+	isresolvedMonomial (N);
+
+}
+//----------------------------------------------------------------------
+// auxiliary procedures for the binomial case
+//----------------------------------------------------------------------
+proc GenerateListOfBinomials(matrix M){
+	int i,j;
+	int number_cols = ncols(M);
+	int number_rows = nrows(M);
+	list returnlist;
+	
+	for(i=1;i<=number_rows;i++){
+		for(j=1; j<= number_cols; j++){
+			if(isLocallyMonomial(M[i,j])==0){				// at least binomial
+				returnlist[size(returnlist)+1] = M[i,j];
+			}
+		}
+	}				
+	
+	return(returnlist);
+}example{
+	ring r =0, (x,y,z),dp;
+	matrix M[3][2] = 1-x,x*z-y^3,z,3xy,x*y*z,2x+z;
+	print(M);
+	GenerateListOfBinomials(M);
+} 
+proc UpdateListofBinomials(list L){	
+	int i,j;
+	int sizeL = size(L);
+	
+	for(i=1;i<=sizeL;i++){
+		if(isLocallyMonomial(L[i]) == 1){
+			L = delete(L,i);
+			sizeL = size(L);
+			i--;
+		}
+	}				
+	
+	return(L);
+}example{
+	ring r =0, (x,y,z),dp;
+	list L = 1-x,x*z-y^3,z,3xy,x*y*z,2x+z;
+	UpdateListofBinomials(L);
+}
+	
+//----------------------------------------------------------------------
+// auxiliary procedures for the monomial case
+//----------------------------------------------------------------------	
+proc CreateBinomialFromMonomialMatrix(matrix M){		//requires a monomial matrix M
+	def r = basering;			//TODO: save ring in List of Data in order to change back afterwards
+	int n = nvars(r);
+	ideal retideal;
+	int i;
+	
+	ideal tmpideal = std(minor(M,1));
+	int d = Maxord(0,tmpideal)[1];						//TODO: ambient space???
+	int idealsize = size(tmpideal);						// we need 2*idealsize many new variables
+	
+	ring tmpr = 0,(z(1..2*idealsize)),dp;
+	def newr = r + tmpr;								// TODO: Is this a good method to construct the new ring? 
+	setring(newr);
+	matrix Mnew = fetch(r,M);
+	ideal tmpideal = fetch(r,tmpideal);
+	
+	for(i=1;i<=idealsize;i++){
+		retideal[i] = var(n+2*i-1)^d * var(n+2*i ) + tmpideal[i];			// J = <y_{2l}^{d-1}y_{2l+1} + x^{A_l}>, but we want to start with y_1 instead of y_2 
+	}
+	
+	return(retideal);									//maybe return more data, like r and new basering 
 }
 
 
@@ -1068,8 +1163,8 @@ proc test_skew_vs_resolve(int m){
 	
 	list linklist = list(l1,l2);
 	int i; int j;
-	ring r = 0,(x(1..m*(m+1) div 2)),dp;
-	matrix M = symmat(m);
+	ring r = 0,(x(1..m*(m-1)div 2)),dp;
+	matrix M = skewmat(m);
 	int minorsize = m;
 	ideal I = minor(M,minorsize);		//maximal minors
 	list blowuplist;
@@ -1154,12 +1249,6 @@ proc binomial_test_generic_vs_resbinomial(int m){		//only 2-minors of generic jx
 		//fprintf(linklist[i],"binomial: %l	endcharts: %s	charts: %s	runtime: %s",f,blowuplist[2],size(blowuplist[1]),blowuplist[4]);	
 		fprintf(linklist[1]," Matrix: %s	minorsize: %s	endcharts: %s	charts: %s	running time: %s",M,minorsize,blowuplist[3],blowuplist[2], runningtime);	
 		
-
-		//tmp_runningtime = rtimer;
-		//blowuplist = resolve(I);
-		//runningtime = rtimer - tmp_runningtime;	
-		//fprintf(linklist[2]," Matrix: %s	minorsize: %s	endcharts: %s	charts: %s	running time: %s", M,minorsize,size(blowuplist[1]),size(blowuplist[2]), runningtime);
-
 		tmp_runningtime = rtimer;
 		blowuplist = BINresol(I);
 		runningtime = rtimer - tmp_runningtime;	
