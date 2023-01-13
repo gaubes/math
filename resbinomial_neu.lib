@@ -1,0 +1,68 @@
+version=" "; // $Id$
+category=" ";
+info="
+LIBRARY:  resbinomial_neu.lib 
+AUTHOR:  Sabrina A. Gaube, sabrina.gaube@uol.de
+
+PROCEDURES:
+
+
+";
+
+
+LIB "resolve2.lib";
+
+proc resbinomial(ideal J)
+{
+	int i,j,k;
+	
+	list BO = createBO(J);
+	list descend = DescendInDimension(BO);
+	list descend_BOlist = descend[1];
+	intvec b = descend[2];
+	//TODO
+	
+	
+	return(1);
+}
+
+
+proc DescendInDimension(list BO){
+	list CoeffBOList;
+	CoeffBOList[1] = BO;
+	intvec b;
+	list BOtmp = BO;
+	
+	list DList = DeltaList(BOtmp);
+	int btmp = size(DList);
+	b[size(b)+1]  = btmp;
+		
+	
+	while(descend_finished(CoeffBOList[size(CoeffBOList)]) == 0){				
+		BOtmp = Coeff(BOtmp,b);
+		CoeffBOList[size(CoeffBOList)+1] = BOtmp;
+		//TODO Schneiden!
+		DList = DeltaList(BOtmp);
+		btmp = size(DList);
+		b[size(b)+1]  = btmp;
+	}
+	return(CoeffBOList,b);						//TODO: Schauen, ob wir oberstes BO auch in der Liste haben wollen
+		
+}
+
+proc descend_finished(list CoeffBO){
+	ideal C; //TODO
+	if(dim(C) == 0){
+		return(1);
+	}
+	if(EqualityOfIdeal(CoeffBO[2],0) == 1){
+		return(2);
+	}
+	if(EqualityOfIdeal(CoeffBO[2],1) == 1){
+		return(3);
+	}
+	//TODO isSmooth(C) and snc(C,E);
+	
+	
+	return(0);
+}

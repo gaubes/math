@@ -1,1 +1,1 @@
- Matrix: x(1),x(2),x(3),x(4)	minorsize: 2	endcharts: 28	charts: 49	running time: 1
+ Matrix: x(1),x(2),x(3),x(4)	minorsize: 2	endcharts: 28	charts: 49	running time: 0

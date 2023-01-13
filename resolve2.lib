@@ -1268,7 +1268,7 @@ static proc slocusE(ideal i)
   return(slocus(i));
 }
 ///////////////////////////////////////////////////////////////////////////////
-static proc inters_E(list BO)
+proc inters_E(list BO)
 "USAGE:  inters_E(BO);
 @*       BO = basic object, a list: ideal W,
 @*                                  ideal J,
@@ -3189,7 +3189,7 @@ static proc powerI(ideal I,int n,int m)
 }
 
 ///////////////////////////////////////////////////////////////////////////////
-static proc Coeff(list BO, int b, list #)
+proc Coeff(list BO, int b, list #)
 "USAGE:  Coeff (BO);
 @*       BO = basic object, a list: ideal W,
 @*                                  ideal J,
@@ -3251,7 +3251,7 @@ EXAMPLE: example Coeff;    shows an example
       "!!!!!! Length of DeltaList does not equal second argument !!!!!!";
       "!!!!!! BO might not have been ord ~ 1 or wrong b          !!!!!!";
    }
-   if(b>=6){return(0);}              // b is too big
+   //if(b>=6){return(0);}              // b is too big					//!!! Sperre entfernt
    int e=int(factorial(b));          // b of Coeff-Ideal
    if(e==0)
    {

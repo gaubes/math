@@ -449,11 +449,11 @@ EXAMPLE: example generic_resolve; shows an example
 	}
 	
 	list minorsize = list(min(ncols(M),nrows(M)),var(1) );				// default: resolve maximal minors; variable and list is only technically in order that we can store the list in the ring!!!
-	ideal minorideal = minor(M,1);
+	ideal minorideal = radical(minor(M,1));
 	if(size(#)>1 and mode == "gen"){
 		if(typeof(#[2])=="int"){
 			minorsize[1] = #[2];										//calculate how long we have to blow up until the #[1]-minors are resolved
-			minorideal = minor(M,minorsize[1]);
+			minorideal = radical(minor(M,minorsize[1]));
 		}
 	}
 	if(size(#)>0 and mode != "gen"){
@@ -482,11 +482,11 @@ EXAMPLE: example generic_resolve; shows an example
 	ideal cent = minor(M,1);											//auxiliary data 
 	export(cent);
 	
-	if(minorsize[1] <= 1){													// ideal of 1 minors is already resolved
+	if(minorsize[1] <= minsize){													// ideal of 1 minors is already resolved
 		return(BlowUpTree,1,1);
 	}
 	
-	BlowUpTree = BlowUpTree +  CopyDataInNextChartsAndBlowUp(M,minor(M,1),1);
+	BlowUpTree = BlowUpTree +  CopyDataInNextChartsAndBlowUp(M,radical(minor(M,1)),1);
 	int i; int j; int k;
 	
 	int number_cols, number_rows;
@@ -528,7 +528,7 @@ EXAMPLE: example generic_resolve; shows an example
 			oldsize = size(BlowUpTree);
 			ideal cent = minor(M,1);									//auxiliary data 
 			export(cent);
-			BlowUpTree = BlowUpTree + CopyDataInNextChartsAndBlowUp(M,minor(M,1),i);
+			BlowUpTree = BlowUpTree + CopyDataInNextChartsAndBlowUp(M,radical(minor(M,1)),i);
 			chart_counter = chart_counter + size(BlowUpTree) - oldsize;
 		}else{
 			end_chart_counter++;
@@ -1117,7 +1117,7 @@ proc test_generic_vs_resolve(int m,int n){
 	int tmp_runningtime = 0;
 	
 	//Test binomial-calculations:
-	for(minorsize=1;minorsize<=min(m,n); minorsize++){
+	for(minorsize=3;minorsize<=min(m,n); minorsize++){
 		//f = create_test_binomial(maxdegree, mode);
 		I = minor(M,minorsize);
 		tmp_runningtime = rtimer;
@@ -1158,7 +1158,7 @@ proc test_generic_vs_resolve(int m,int n){
 
 proc test_skew_vs_resolve(int m){
 
-	link l2 = ":w Testfaelle/resolve.txt";
+	link l2 = ":w Testfaelle/resolve_skew.txt";
 	link l1 = ":w Testfaelle/skew_generic.txt";
 	
 	list linklist = list(l1,l2);
@@ -1174,9 +1174,9 @@ proc test_skew_vs_resolve(int m){
 	int tmp_runningtime = 0;
 	
 	//Test binomial-calculations:
-	for(minorsize=m;minorsize>=2; minorsize=minorsize-2){
+	for(minorsize=4;minorsize<=m; minorsize=minorsize+2){
 		//f = create_test_binomial(maxdegree, mode);
-		I = minor(M,minorsize);
+		I = radical(std(minor(M,minorsize)));
 		tmp_runningtime = rtimer;
 		blowuplist = skewsymmetric_resolve(m,minorsize);
 		runningtime = rtimer - tmp_runningtime;	
@@ -1212,7 +1212,33 @@ proc test_skew_vs_resolve(int m){
 	//close(l4);
 }
 
+proc test_skew(int m){
+	link l1 = ":w Testfaelle/skew_generic_number_charts.txt";
+	
+	list linklist = list(l1);
+	int i; int j;
+	ring r = 0,(x(1..m*(m-1)div 2)),dp;
+	matrix M = skewmat(m);
+	int minorsize = m;
+	ideal I = minor(M,minorsize);		//maximal minors
+	list blowuplist;
+	
+	int runningtime = 0;
+	int whole_runningtime = 0;
+	int tmp_runningtime = 0;
+	
+	//Test binomial-calculations:
+	for(minorsize=4;minorsize<=m; minorsize=minorsize+2){
+		tmp_runningtime = rtimer;
+		blowuplist = skewsymmetric_resolve(minorsize,minorsize);
+		runningtime = rtimer - tmp_runningtime;	
+	
+		fprintf(linklist[1],"	minorsize: %s	endcharts: %s	charts: %s	running time: %s",minorsize,blowuplist[3],blowuplist[2], runningtime);	
 
+	}
+
+	close(l1);
+}
 
 
 
@@ -1225,8 +1251,8 @@ proc binomial_test_generic_vs_resbinomial(int m){		//only 2-minors of generic jx
 	
 	list linklist = list(l1,l2,l3);
 	int i; int j;
-	ring r = 0,(x(1..m*m)),dp;
-	matrix M = genericmat(m,m);
+	ring r = 0,(x(1..m*2)),dp;
+	matrix M = genericmat(m,2);
 	int minorsize = 2;
 	ideal I = minor(M,minorsize);		//maximal minors
 	list blowuplist;
@@ -1239,9 +1265,9 @@ proc binomial_test_generic_vs_resbinomial(int m){		//only 2-minors of generic jx
 	int tmp_runningtime = 0;
 	
 	//Test binomial-calculations:
-	for(j=2;j<=m;j++){
+	for(j=4;j<=m;j++){
 		//f = create_test_binomial(maxdegree, mode);
-		M = genericmat(j,j);
+		M = genericmat(j,2);
 		I = minor(M,minorsize);
 		tmp_runningtime = rtimer;
 		blowuplist = generic_resolve(j,j,minorsize);
@@ -1254,7 +1280,6 @@ proc binomial_test_generic_vs_resbinomial(int m){		//only 2-minors of generic jx
 		runningtime = rtimer - tmp_runningtime;	
 		fprintf(linklist[3]," Matrix: %s	minorsize: %s	endcharts: %s	charts: %s	running time: %s", M,minorsize,size(blowuplist[1]),size(blowuplist[2]), runningtime);
 
-
 	}
 	
 	//close files:
@@ -1263,3 +1288,5 @@ proc binomial_test_generic_vs_resbinomial(int m){		//only 2-minors of generic jx
 	close(l3);
 
 }
+
+

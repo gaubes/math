@@ -1,0 +1,3 @@
+	minorsize: 4	endcharts: 6	charts: 7	running time: 0
+	minorsize: 6	endcharts: 90	charts: 106	running time: 2
+	minorsize: 8	endcharts: 2520	charts: 2969	running time: 62
