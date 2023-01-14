@@ -14,6 +14,10 @@ LIB "resolve2.lib";
 
 proc resbinomial(ideal J)
 {
+	def r = basering;
+	list BlowUpTree;
+	BlowUpTree[1] = r;
+	list EndCharts = list();
 	int i,j,k;
 	
 	list BO = createBO(J);
@@ -23,7 +27,7 @@ proc resbinomial(ideal J)
 	//TODO
 	
 	
-	return(1);
+	return(EndCharts,BlowUpTree);
 }
 
 
@@ -65,4 +69,11 @@ proc descend_finished(list CoeffBO){
 	
 	
 	return(0);
+}
+
+
+proc UpdateBO7(new_b,old_b,BO){
+	//TODO
+	matrix M;
+	return(M)
 }
