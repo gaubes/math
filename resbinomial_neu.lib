@@ -5,8 +5,13 @@ LIBRARY:  resbinomial_neu.lib
 AUTHOR:  Sabrina A. Gaube, sabrina.gaube@uol.de
 
 PROCEDURES:
+	resbinomial2(ideal J);
 
-
+	DescendInDimension(list BO);
+	descend_finished(list CoeffBO);
+	isSmooth(list BO);
+	
+	proc UpdateBO7(intvec new_b,intvec old_b,list BO);
 ";
 
 
@@ -24,7 +29,27 @@ proc resbinomial(ideal J)
 	list descend = DescendInDimension(BO);
 	list descend_BOlist = descend[1];
 	intvec b = descend[2];
+	//ideal center = resbinomialCenter(BO,b);
+	ideal center = descend_BOlist[size(descend_BOlist)][2];
+	//TODO:blowup und fill successormethode
 	//TODO
+	for(i=2; i<= size(BlowUpTree); i++){
+		init_chart();							//TODO
+		list descend = DescendInDimension(BO);
+		list descend_BOlist = descend[1];
+		intvec b_new = descend[2];
+		UpdateBO7(b_new,b,BO);
+		b = b_new;
+		//ideal center = resbinomialCenter(BO,b);
+		ideal center = descend_BOlist[size(descend_BOlist)][2];
+		if(finished(BO)){
+			EndCharts[size(EndCharts)+1] = BlowUpTree[i];
+		}else{
+			//TODO: blowup and fill successorcharts
+		}
+		
+	}
+	
 	
 	
 	return(EndCharts,BlowUpTree);
@@ -45,35 +70,47 @@ proc DescendInDimension(list BO){
 	while(descend_finished(CoeffBOList[size(CoeffBOList)]) == 0){				
 		BOtmp = Coeff(BOtmp,b);
 		CoeffBOList[size(CoeffBOList)+1] = BOtmp;
-		//TODO Schneiden!
+		//TODO Schneiden! inters_E
 		DList = DeltaList(BOtmp);
 		btmp = size(DList);
 		b[size(b)+1]  = btmp;
 	}
+	//CoeffBOList[last][2] should contain the ideal of center
 	return(CoeffBOList,b);						//TODO: Schauen, ob wir oberstes BO auch in der Liste haben wollen
 		
 }
 
-proc descend_finished(list CoeffBO){
-	ideal C; //TODO
-	if(dim(C) == 0){
+proc descend_finished(list CoeffBO){						
+	if(dim(std(CoeffBO[2])) == 0){							// point -> correct center
 		return(1);
 	}
-	if(EqualityOfIdeal(CoeffBO[2],0) == 1){
+	if(EqualityOfIdeal(CoeffBO[2],0) == 1){					// input was zero
 		return(2);
 	}
-	if(EqualityOfIdeal(CoeffBO[2],1) == 1){
+	if(EqualityOfIdeal(CoeffBO[2],1) == 1){					// correct center was calculated in the step before
 		return(3);
 	}
-	//TODO isSmooth(C) and snc(C,E);
-	
-	
+	if(isSmooth(CoeffBO) and normalCross(CoeffBO[2],CoeffBO[4])){			// isSmooth(C) and snc(C,E);
+		return(4);
+	}
+	return(0);
+}
+
+proc isSmooth(list BO){
+	list DList = DeltaList(BO);
+	if(size(DList) == 1){
+		return(1);
+	}
 	return(0);
 }
 
 
-proc UpdateBO7(new_b,old_b,BO){
+proc UpdateBO7(intvec new_b,intvec old_b,list BO){
 	//TODO
 	matrix M;
 	return(M)
+}
+
+proc resbinomialCenter(list BO,intvec b){
+	//not necessary because its the second entry of the last BO...
 }

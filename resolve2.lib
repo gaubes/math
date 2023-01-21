@@ -2564,10 +2564,10 @@ EXAMPLE: example CenterBO;  shows an example
 example
 {  "EXAMPLE:";
    echo = 2;
-   ring R=0,(x,y),dp;
+   ring R=0,(x,y,z),dp;
 
    ideal W;
-   ideal J=x2-y3;
+   ideal J=x2-y2z2;
    intvec b=1;
    list E;
    ideal abb=maxideal(1);
@@ -3694,8 +3694,10 @@ EXAMPLE: example resolve;  shows an example
    {
       attrib(J,"isHy",0);
    }
+//----------------------------------------------------------------------   
+//END OF INIT AND BEGIN OF THE PROCEDURE!!!-----------------------------
+//----------------------------------------------------------------------
    
-//END OF INIT AND BEGIN OF THE PROCEDURE!!!-----------------------------   
    
 //--- create the BO
    list BO=W,J,bvec,E,abb,v,w,intE;
@@ -4463,7 +4465,7 @@ static proc testBlowUp(list BO,ideal cent,list tmpList, int j, int extra)
    return(1);
 }
 //////////////////////////////////////////////////////////////////////////////
-static proc normalCross(list E,list #)
+proc normalCross(list E,list #)
 "Internal procedure - no help and no example available
 "
 {
