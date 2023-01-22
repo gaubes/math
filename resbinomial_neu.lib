@@ -5,21 +5,25 @@ LIBRARY:  resbinomial_neu.lib
 AUTHOR:  Sabrina A. Gaube, sabrina.gaube@uol.de
 
 PROCEDURES:
-	resbinomial2(ideal J);
+	resbinomial2(ideal J); resolves a binomial ideal J
 
-
-	init_chart();
-	DescendInDimension(list BO);
-	descend_finished(list CoeffBO);
-	isSmooth(list BO);
+	DescendInDimension(list BO); calculates the coefficient ideals; apply induction on dimension 
+	descend_finished(list CoeffBO); checks whether the descend in dimension is finished
+	isSmooth(list BO);	checks whether BO[2] is smooth.  
 	
-	proc UpdateBO7(intvec new_b,intvec old_b,list BO);
+	SuccessorsCharts(list BO, ideal cent, int chartnumber); blow up method which fill the necessary data in the successor chart
+	
+	proc UpdateBO7(intvec new_b,intvec old_b,list BO);	update the information about the interesting exceptional divisors
 ";
 
 
 LIB "resolve2.lib";
 
-proc resbinomial(ideal J)
+proc resbinomial2(ideal J)
+"USAGE: resbinomial2(ideal J); resolves a binomial ideal J
+RETURN: a list of final charts and whole charts of the resolution process
+EXAMPLE: example resbinomial2; shows an example
+"
 {
 	def r = basering;
 	list BlowUpTree;
@@ -37,7 +41,10 @@ proc resbinomial(ideal J)
 	BlowUpTree = BlowUpTree + SuccessorsCharts(BO, center, 1);
 	//TODO
 	for(i=2; i<= size(BlowUpTree); i++){
-		init_chart();							//TODO
+		if(defined(actual_chart)){kill actual_chart;} 
+		def actual_chart = L[i];
+		setring(actual_chart);
+
 		list descend = DescendInDimension(BO);
 		list descend_BOlist = descend[1];
 		intvec b_new = descend[2];
@@ -50,20 +57,19 @@ proc resbinomial(ideal J)
 		}else{
 			BlowUpTree = BlowUpTree + SuccessorsCharts(BO, center, i);
 		}
-		
 	}
 	
 	
 	
 	return(EndCharts,BlowUpTree);
 }
-proc init_chart(list BO, ideal cent){	//first blow up then recover the data
-	
-	
-	
-}
 
-proc DescendInDimension(list BO){
+
+proc DescendInDimension(list BO)
+"USAGE: DescendInDimension(list BO); calculates the coefficient ideals; apply induction on dimension 
+RETURN: a list basic objects corresponding to the different coefficient ideals and an intvec b with the values of the correspoding orders 
+EXAMPLE: example DescendInDimension; shows an example
+"{
 	list CoeffBOList;
 	CoeffBOList[1] = BO;
 	intvec b;
@@ -82,12 +88,16 @@ proc DescendInDimension(list BO){
 		btmp = size(DList);
 		b[size(b)+1]  = btmp;
 	}
-	//CoeffBOList[last][2] should contain the ideal of center
+	//CoeffBOList[size(CoeffBOList)][2] should contain the ideal of center
 	return(CoeffBOList,b);						//TODO: Schauen, ob wir oberstes BO auch in der Liste haben wollen
 		
 }
 
-proc descend_finished(list CoeffBO){						
+proc descend_finished(list CoeffBO)
+"USAGE: descend_finished(list CoeffBO); requires the last coefficient basic object as input 
+RETURN: 0, if the descend is not finished, 1 if the potential center  is a point, 2 if the input was zero, 3 if the correct center was calculated in the step before, 4 if the potential center is smooth and snc with the exceptional divisors
+EXAMPLE: example descend_finished; shows an example
+"{						
 	if(dim(std(CoeffBO[2])) == 0){							// point -> correct center
 		return(1);
 	}
@@ -100,10 +110,15 @@ proc descend_finished(list CoeffBO){
 	if(isSmooth(CoeffBO) and normalCross(CoeffBO[2],CoeffBO[4])){			// isSmooth(C) and snc(C,E);
 		return(4);
 	}
-	return(0);
+	return(0);												// not finished
 }
 
-proc isSmooth(list BO){
+proc isSmooth(list BO)
+"USAGE: isSmooth(list BO); checks whether BO[2] is smooth 
+RETURN: 1, if it is smooth, 0 otherwise
+EXAMPLE: example isSmooth; shows an example
+"
+{								//TODO: so oder anders?
 	list DList = DeltaList(BO);
 	if(size(DList) == 1){
 		return(1);
@@ -112,8 +127,13 @@ proc isSmooth(list BO){
 }
 
 
-
-proc SuccessorsCharts(list BO, ideal cent, int chartnumber){	//Prepare the charts for blow up
+//Blowing up each of the data and mapping each of it into new successor ring:
+proc SuccessorsCharts(list BO, ideal cent, int chartnumber)
+"USAGE: SuccessorsCharts(list BO, ideal cent, int chartnumber); Basic object BO, center cent and the number of the current chart chartnumber
+RETURN: a list of successor charts with the corresponding data
+EXAMPLE: example SuccessorsCharts; shows an example
+"
+{	
 	int i,j,k,n;
 
 	def r = basering;
