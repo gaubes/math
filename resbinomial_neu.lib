@@ -7,6 +7,8 @@ AUTHOR:  Sabrina A. Gaube, sabrina.gaube@uol.de
 PROCEDURES:
 	resbinomial2(ideal J);
 
+
+	init_chart();
 	DescendInDimension(list BO);
 	descend_finished(list CoeffBO);
 	isSmooth(list BO);
@@ -32,20 +34,21 @@ proc resbinomial(ideal J)
 	//ideal center = resbinomialCenter(BO,b);
 	ideal center = descend_BOlist[size(descend_BOlist)][2];
 	//TODO:blowup und fill successormethode
+	BlowUpTree = BlowUpTree + SuccessorsCharts(BO, center, 1);
 	//TODO
 	for(i=2; i<= size(BlowUpTree); i++){
 		init_chart();							//TODO
 		list descend = DescendInDimension(BO);
 		list descend_BOlist = descend[1];
 		intvec b_new = descend[2];
-		UpdateBO7(b_new,b,BO);
+		UpdateBO7(b_new,b,BO);					//TODO
 		b = b_new;
 		//ideal center = resbinomialCenter(BO,b);
 		ideal center = descend_BOlist[size(descend_BOlist)][2];
 		if(finished(BO)){
 			EndCharts[size(EndCharts)+1] = BlowUpTree[i];
 		}else{
-			//TODO: blowup and fill successorcharts
+			BlowUpTree = BlowUpTree + SuccessorsCharts(BO, center, i);
 		}
 		
 	}
@@ -54,7 +57,11 @@ proc resbinomial(ideal J)
 	
 	return(EndCharts,BlowUpTree);
 }
-
+proc init_chart(list BO, ideal cent){	//first blow up then recover the data
+	
+	
+	
+}
 
 proc DescendInDimension(list BO){
 	list CoeffBOList;
@@ -103,6 +110,48 @@ proc isSmooth(list BO){
 	}
 	return(0);
 }
+
+
+
+proc SuccessorsCharts(list BO, ideal cent, int chartnumber){	//Prepare the charts for blow up
+	int i,j,k,n;
+
+	def r = basering;
+	list successor_list = list();
+	//TODO define: int numb_predecessor for the path matrix 
+	// intmat path [2][numb_predecessor+1];
+	successor_list = blowUpBO(BO,cent,2);
+	int Numb_sucessors = size(successor_list);
+	
+	
+
+	// construct successorlist
+	for(j = 1;j<=Numb_center_components; j++){
+		if(defined(newring)){kill newring;}
+		def newring = successor_list[j];
+		setring(newring);
+		n = nvars(basering);
+		tmp_n = n;
+		map BlowUpMap = r,bM;
+		//TODO: Was muss alles übertragen werden?
+		ideal last_map = bM;
+		ideal total_map = BlowUpMap(total_map);
+		def path = imap(r,path);
+		path=path,[chartnumber,j];
+		//TODO: mehr exportieren?
+		export(path);
+		export(last_map);
+		export(total_map);
+	}
+
+	setring(r);
+	
+	if(defined(newring)){kill newring;}	
+	return(successor_list);
+}
+
+
+
 
 
 proc UpdateBO7(intvec new_b,intvec old_b,list BO){
