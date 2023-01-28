@@ -46,18 +46,20 @@ EXAMPLE: example resbinomial2; shows an example
 	//TODO
 	for(i=2; i<= size(BlowUpTree); i++){
 		if(defined(actual_chart)){kill actual_chart;} 
-		def actual_chart = L[i];
+		def actual_chart = BlowUpTree[i];
 		setring(actual_chart);
-
+		
+		intvec b_old = BO[3];
 		list descend = DescendInDimension(BO);
 		list descend_BOlist = descend[1];
 		intvec b_new = descend[2];
 		ideal center = descend[3];
-		BO[7] = UpdateBO7(b_new,b,BO); // hier das unterste BO nehmen um die Anzahl der exzeptionellen Divisoren zu erhalten!!!					
+		BO[7] = UpdateBO7(b_new,b_old,BO); // hier das unterste BO nehmen um die Anzahl der exzeptionellen Divisoren zu erhalten!!!					
 		b = b_new;
 		//ideal center = resbinomialCenter(BO,b);
 		//ideal center = descend_BOlist[size(descend_BOlist)][2];
-		if(finished(BO)){
+		//if(finished(BO))
+		if(EqualityOfIdeal(center,1) == 0){								//Reicht das als abbruch Bedingung?
 			EndCharts[size(EndCharts)+1] = BlowUpTree[i];
 		}else{
 			BlowUpTree = BlowUpTree + SuccessorsCharts(BO, center, i);
@@ -85,7 +87,7 @@ EXAMPLE: example DescendInDimension; shows an example
 	intvec b  = btmp;
 		
 	
-	while(descend_finished(center, CoeffBOList[size(CoeffBOList)]) == 0){				
+	while(descend_finished(DList, CoeffBOList[size(CoeffBOList)]) == 0){				
 		BOtmp = Coeff(BOtmp,b[size(b)]);
 		CoeffBOList[size(CoeffBOList)+1] = BOtmp;
 		//TODO Schneiden! inters_E
@@ -94,16 +96,21 @@ EXAMPLE: example DescendInDimension; shows an example
 		center = DList[btmp];
 		b[size(b)+1]  = btmp;
 	}
+	if(EqualityOfIdeal(center, BO[2])){					//Reicht das?
+		center = 1;
+	}
 
 	return(CoeffBOList,b,center);						//TODO: Schauen, ob wir oberstes BO auch in der Liste haben wollen
 		
 }
 
-proc descend_finished(ideal ctemp, list CoeffBO)
+proc descend_finished(list DList, list CoeffBO)
 "USAGE: descend_finished(list CoeffBO); requires the last coefficient basic object as input 
 RETURN: 0, if the descend is not finished, 1 if the potential center  is a point, 2 if the input was zero, 3 if the correct center was calculated in the step before, 4 if the potential center is smooth and snc with the exceptional divisors
 EXAMPLE: example descend_finished; shows an example
-"{						
+"{	
+	int btmp = size(DList);
+	ideal ctemp = DList[btmp];					
 	if(dim(ctemp) == 0){							// point -> correct center
 		return(1);
 	}
@@ -113,20 +120,20 @@ EXAMPLE: example descend_finished; shows an example
 	if(EqualityOfIdeal(CoeffBO[2],1) == 1){					// correct center was calculated in the step before
 		return(3);
 	}
-	if(isSmooth(ctemp) and normalCross(ctemp,CoeffBO[4])){			// isSmooth(C) and snc(C,E);
+	if(btmp == 1  && normalCross(ctemp,CoeffBO[4]) == 1){			// isSmooth(C) and snc(C,E);
 		return(4);
 	}
 	return(0);												// not finished
 }
 
-proc isSmooth(list BO)		//TODO wie die ordnung abfangen?
+proc isSmooth(btmp)		//TODO wie die ordnung abfangen?
 "USAGE: isSmooth(list BO); checks whether BO[2] is smooth 
 RETURN: 1, if it is smooth, 0 otherwise
 EXAMPLE: example isSmooth; shows an example
 "
 {								//TODO: so oder anders?
-	list DList = DeltaList(BO);
-	if(size(DList) == 1){
+	
+	if(btmp == 1){
 		return(1);
 	}
 	return(0);
@@ -152,22 +159,23 @@ EXAMPLE: example SuccessorsCharts; shows an example
 	
 
 	// construct successorlist
-	for(j = 1;j<=Numb_center_components; j++){
+	for(j = 1;j<=Numb_sucessors; j++){
 		if(defined(newring)){kill newring;}
 		def newring = successor_list[j];
 		setring(newring);
 		n = nvars(basering);
-		tmp_n = n;
+		//tmp_n = n;
+		ideal bM=BO[5];	//aus resolve.lib abgeschrieben
 		map BlowUpMap = r,bM;
 		//TODO: Was muss alles übertragen werden?
 		ideal last_map = bM;
-		ideal total_map = BlowUpMap(total_map);
-		def path = imap(r,path);
-		path=path,[chartnumber,j];
+		//ideal total_map = BlowUpMap(total_map);
+		//def path = imap(r,path);
+		//path=path,[chartnumber,j];
 		//TODO: mehr exportieren?
-		export(path);
+		//export(path);
 		export(last_map);
-		export(total_map);
+		//export(total_map);
 	}
 
 	setring(r);
@@ -180,7 +188,7 @@ EXAMPLE: example SuccessorsCharts; shows an example
 
 
 
-proc UpdateBO7(intvec new_b,intvec old_b,list BO){
+proc UpdateBO7(intvec b_new,intvec b_old,list BO){
 	int i,j;
 	// ersetze BO-list im Input durch den gesamten Abstieg? -> Dann ist hier auch klar, dass wir das originale BO in der Abstiegsliste brauchen
 	list E = BO[4]; // TODO!!!! wir brauchen eigentlich das 'richtige E' von position b_decrease_pos hier!!!!
