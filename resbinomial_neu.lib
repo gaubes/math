@@ -36,13 +36,18 @@ EXAMPLE: example resbinomial2; shows an example
 	list descend = DescendInDimension(BO);
 	list descend_BOlist = descend[1];
 	intvec b = descend[2];
-	BO[3] = b;
-	descend_BOlist[1][3] = b;			//GGF überall einen b-eintrag  mit entsprechend kleinerer größe einfügen
+	//BO[3] = b;
+	BO = descend_BOlist[1];
+	//descend_BOlist[1][3] = b;			//GGF überall einen b-eintrag  mit entsprechend kleinerer größe einfügen
 	ideal center = descend[3];
 	//ideal center = resbinomialCenter(BO,b);
 	//ideal center = descend_BOlist[size(descend_BOlist)][2];
-	//TODO:blowup und fill successormethode
-	BlowUpTree = BlowUpTree + SuccessorsCharts(BO, center, 1);
+	
+	if(EqualityOfIdeal(center,1) == 1){								//Reicht das als abbruch Bedingung?
+		EndCharts[1] = BlowUpTree[1];
+	}else{
+		BlowUpTree = BlowUpTree + SuccessorsCharts(BO, center, 1);
+	}
 	//TODO
 	for(i=2; i<= size(BlowUpTree); i++){
 		print(i);
@@ -76,8 +81,7 @@ EXAMPLE: example resbinomial2; shows an example
 			BlowUpTree = BlowUpTree + SuccessorsCharts(BO, center, i);
 		}
 	}
-	
-	
+
 	
 	return(EndCharts,BlowUpTree);
 }example{
@@ -134,13 +138,14 @@ EXAMPLE: example DescendInDimension; shows an example
 		//BO7 auf jeder Stufe hinzufügen für inters_E
 		//hier irgendwie BO7 anpassen....
 		if(orderdecreased == 0 and (size(b_old) >= counter+2)){ 
-			if(b[counter+1] == b_old[counter+1]){
-				BO7new[counter + 1 ] = BO7old[counter +1];
+			if(b[counter+2] == b_old[counter+2]){
+				BO7new[counter + 2 ] = BO7old[counter + 2];
 			}
 		
-			if(b[counter+1] < b_old[counter+1]){
-				BO7new[counter+1] = size(BOtmp[4]);
+			if(b[counter+2] < b_old[counter+2]){						//TODO!!!! Wann BO7 updaten und wann schneiden??? indexshift???
+				BO7new[counter+1] = size(BOtmp[4]);						//Kreisabhaengigkeit?!?!
 				orderdecreased = 1;
+				BO7new[counter+2] = -1;
 			}
 		} else{
 			BO7new[counter + 2 ] = -1;
