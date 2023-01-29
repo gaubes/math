@@ -55,22 +55,22 @@ EXAMPLE: example resbinomial2; shows an example
 		list descend_BOlist = descend[1];
 		intvec b_new = descend[2];
 		ideal center = descend[3];
-		BO[7] = UpdateBO7(b_new,b_old,BO); // hier das unterste!!! BO nehmen um die Anzahl der exzeptionellen Divisoren zu erhalten!!!					
+		//BO[7] = UpdateBO7(b_new,b_old,BO); // hier das unterste!!! BO nehmen um die Anzahl der exzeptionellen Divisoren zu erhalten!!!					
 		// auf jeder Stufe im Abstieg BO7 hinzufügen
 		//WO im Code?
-		for(j=1;j<=size(descend_BOlist);j++){
-			descend_BOlist[j][7] = list();
-			for(k=j;size(descend_BOlist);k++){
-				descend_BOlist[j][7][size(descend_BOlist[j])+1] = BO[7][k]
-			}
-		}
+		//for(j=1;j<=size(descend_BOlist);j++){
+		//	descend_BOlist[j][7] = list();
+		//	for(k=j;size(descend_BOlist);k++){
+		//		descend_BOlist[j][7][size(descend_BOlist[j])+1] = BO[7][k];
+		//	}
+		//}
 		b = b_new;
 		BO[3] = b_new;
 		
 		//ideal center = resbinomialCenter(BO,b);
 		//ideal center = descend_BOlist[size(descend_BOlist)][2];
 		//if(finished(BO))
-		if(EqualityOfIdeal(center,1) == 0){								//Reicht das als abbruch Bedingung?
+		if(EqualityOfIdeal(center,1) == 1){								//Reicht das als abbruch Bedingung?
 			EndCharts[size(EndCharts)+1] = BlowUpTree[i];
 		}else{
 			BlowUpTree = BlowUpTree + SuccessorsCharts(BO, center, i);
@@ -87,14 +87,16 @@ EXAMPLE: example resbinomial2; shows an example
 }
 
 
-proc DescendInDimension(list BO)
+proc DescendInDimension(list BO) // TODO: combine Update BO and DescendInDimension!
 "USAGE: DescendInDimension(list BO); calculates the coefficient ideals; apply induction on dimension 
 RETURN: a list basic objects corresponding to the different coefficient ideals and an intvec b with the values of the correspoding orders 
 EXAMPLE: example DescendInDimension; shows an example
 "{
+	int j,k;
 	list CoeffBOList;
 	CoeffBOList[1] = BO;
 	list BOtmp = BO;
+	intvec b_old = BO[3];
 	
 	list DList = DeltaList(BOtmp);
 	int btmp = size(DList);
@@ -102,25 +104,68 @@ EXAMPLE: example DescendInDimension; shows an example
 	intvec b  = btmp;	
 	int counter = 0;
 	list E;
+	intvec BO7new;
+	intvec BO7old = BO[7];
 	
-	while(descend_finished(DList, CoeffBOList[size(CoeffBOList)], counter) == 0){				
+	
+	int orderdecreased = 0;
+	if(b[1] == b_old[1]){
+		BO7new[1] = BO7old[1];
+	}	
+	if(b[1] < b_old[1]){
+		BO7new[1] = size(BOtmp[4]);
+		orderdecreased = 1;
+	}
+	
+	BOtmp[7] = BO7new;
+	list E = inters_E(BOtmp);
+	CoeffBOList[1][2] = mstd(E[1]^b[1] + CoeffBOList[1][2])[2];
+	center = std(DList[btmp]+E[1]);
+	
+	while(descend_finished(DList, CoeffBOList[size(CoeffBOList)], counter) == 0){	
+		//TODO: Nochmal neu schreiben! Reihenfolge beachten und BO7 mitsetzen!			
 		BOtmp = Coeff(BOtmp,b[size(b)]);
-		CoeffBOList[counter+1] = BOtmp;
-		//BO7 auf jeder Stufe hinzufügen für inters_E
-		//hier irgendwie BO7 anpassen.... 
-		
-		//TODO Reihenfolge von schneiden und coeff berechnen?!?!
+		CoeffBOList[size(CoeffBOList)+1] = BOtmp;
+
+		// Erst Deltalist und b berechnen, dann schneiden dann coeff berechnen!!!!
 		DList = DeltaList(BOtmp);
-		btmp = size(DList);
-		E = inters_E;
-		CoeffBOList[counter][2] = mstd(E[1]^b[counter] + CoeffBOList[counter][2])[2];
-		center = std(DList[btmp]+E[1]);
+		btmp = size(DList);		
 		b[size(b)+1]  = btmp;
+		//BO7 auf jeder Stufe hinzufügen für inters_E
+		//hier irgendwie BO7 anpassen....
+		if(orderdecreased == 0 and (size(b_old) >= counter+2)){ 
+			if(b[counter+1] == b_old[counter+1]){
+				BO7new[counter + 1 ] = BO7old[counter +1];
+			}
+		
+			if(b[counter+1] < b_old[counter+1]){
+				BO7new[counter+1] = size(BOtmp[4]);
+				orderdecreased = 1;
+			}
+		} else{
+			BO7new[counter + 2 ] = -1;
+		}
+		
+		BOtmp[7][1] = BO7new[counter + 2 ];
+		E = inters_E(BOtmp);
+		CoeffBOList[counter+2][2] = mstd(E[1]^b[counter+2] + CoeffBOList[counter+2][2])[2];
+		center = std(DList[btmp]+E[1]);
 		counter++;
 	}
 	if(EqualityOfIdeal(center, BO[2])){					//Reicht das?
 		center = 1;
 	}
+
+	//BO7 und b auf allen Leveln neusetzen:
+	for(j=1;j<=size(BO7new);j++){
+		CoeffBOList[j][7] = intvec(BO7new[j..size(BO7new)]);
+	}
+	for(j=1;j<=size(b);j++){
+		for(k=1;k<=size(b);k++){	
+			CoeffBOList[j][3][k] = b[k];
+		}
+	}
+			
 
 	return(CoeffBOList,b,center);						//TODO: Schauen, ob wir oberstes BO auch in der Liste haben wollen
 		
