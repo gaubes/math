@@ -27,6 +27,8 @@ EXAMPLE: example resbinomial2; shows an example
 "
 {
 	def r = basering;
+	module path = [0,-1];										//path of the current chart, autoconverted to matrix
+	export(path);
 	list BlowUpTree;
 	BlowUpTree[1] = r;
 	list EndCharts = list();
@@ -47,15 +49,16 @@ EXAMPLE: example resbinomial2; shows an example
 		EndCharts[1] = BlowUpTree[1];
 	}else{
 		BlowUpTree = BlowUpTree + SuccessorsCharts(BO, center, 1);
+		//center;
 	}
 	//TODO
 	for(i=2; i<= size(BlowUpTree); i++){
-		print(i);
+		//print(i);
 		if(defined(actual_chart)){kill actual_chart;} 
 		def actual_chart = BlowUpTree[i];
 		setring(actual_chart);
-		
-		intvec b_old = BO[3];
+		//intvec b_old = BO[3];
+		if (i == 3 or i == 5){print(BO[2]);}
 		list descend = DescendInDimension(BO);
 		list descend_BOlist = descend[1];
 		intvec b_new = descend[2];
@@ -79,6 +82,7 @@ EXAMPLE: example resbinomial2; shows an example
 			EndCharts[size(EndCharts)+1] = BlowUpTree[i];
 		}else{
 			BlowUpTree = BlowUpTree + SuccessorsCharts(BO, center, i);
+			if(i == 3 or i == 5){center;}
 		}
 	}
 
@@ -91,7 +95,7 @@ EXAMPLE: example resbinomial2; shows an example
 }
 
 
-proc DescendInDimension(list BO) // TODO: combine Update BO and DescendInDimension!
+proc DescendInDimension(list BO) 
 "USAGE: DescendInDimension(list BO); calculates the coefficient ideals; apply induction on dimension 
 RETURN: a list basic objects corresponding to the different coefficient ideals and an intvec b with the values of the correspoding orders 
 EXAMPLE: example DescendInDimension; shows an example
@@ -105,9 +109,9 @@ EXAMPLE: example DescendInDimension; shows an example
 	list DList = DeltaList(BOtmp);
 	int btmp = size(DList);
 	ideal center = DList[btmp];
-	intvec b  = btmp;	
+	intvec b;
+	b[1] = btmp;	
 	int counter = 0;
-	list E;
 	intvec BO7new;
 	intvec BO7old = BO[7];
 	
@@ -126,7 +130,7 @@ EXAMPLE: example DescendInDimension; shows an example
 	CoeffBOList[1][2] = mstd(E[1]^b[1] + CoeffBOList[1][2])[2];
 	center = std(DList[btmp]+E[1]);
 	
-	while(descend_finished(DList, CoeffBOList[size(CoeffBOList)], counter) == 0){	
+	while(descend_finished(center, btmp, CoeffBOList[size(CoeffBOList)], counter) == 0){	
 		//TODO: Nochmal neu schreiben! Reihenfolge beachten und BO7 mitsetzen!			
 		BOtmp = Coeff(BOtmp,b[size(b)]);
 		CoeffBOList[size(CoeffBOList)+1] = BOtmp;
@@ -136,14 +140,13 @@ EXAMPLE: example DescendInDimension; shows an example
 		btmp = size(DList);		
 		b[size(b)+1]  = btmp;
 		//BO7 auf jeder Stufe hinzufügen für inters_E
-		//hier irgendwie BO7 anpassen....
 		if(orderdecreased == 0 and (size(b_old) >= counter+2)){ 
 			if(b[counter+2] == b_old[counter+2]){
 				BO7new[counter + 2 ] = BO7old[counter + 2];
 			}
 		
-			if(b[counter+2] < b_old[counter+2]){						//TODO!!!! Wann BO7 updaten und wann schneiden??? indexshift???
-				BO7new[counter+1] = size(BOtmp[4]);						//Kreisabhaengigkeit?!?!
+			if(b[counter+2] < b_old[counter+2]){						
+				BO7new[counter+1] = size(BOtmp[4]);						//too many intersetions but not a problem
 				orderdecreased = 1;
 				BO7new[counter+2] = -1;
 			}
@@ -153,15 +156,19 @@ EXAMPLE: example DescendInDimension; shows an example
 		
 		BOtmp[7][1] = BO7new[counter + 2 ];
 		E = inters_E(BOtmp);
-		CoeffBOList[counter+2][2] = mstd(E[1]^b[counter+2] + CoeffBOList[counter+2][2])[2];
-		center = std(DList[btmp]+E[1]);
-		counter++;
+		if(isMonomialCase(BOtmp) == 0){				//GGF NOCH WO ANDERSHIN SCHIEBEN
+			CoeffBOList[counter+2][2] = mstd(E[1]^b[counter+2] + CoeffBOList[counter+2][2])[2];
+			center = std(DList[btmp]+E[1]);
+			counter++;
+		}else{
+			center = monomialCase(BOtmp);
+		}
 	}
 	if(EqualityOfIdeal(center, BO[2])){					//Reicht das?
 		center = 1;
 	}
 
-	//BO7 und b auf allen Leveln neusetzen:
+	//reset BO7 and b in all levels of descend in dimension:
 	for(j=1;j<=size(BO7new);j++){
 		CoeffBOList[j][7] = intvec(BO7new[j..size(BO7new)]);
 	}
@@ -170,13 +177,12 @@ EXAMPLE: example DescendInDimension; shows an example
 			CoeffBOList[j][3][k] = b[k];
 		}
 	}
-			
 
-	return(CoeffBOList,b,center);						//TODO: Schauen, ob wir oberstes BO auch in der Liste haben wollen
+	return(CoeffBOList,b,center);						
 		
 }
 
-proc descend_finished(list DList, list CoeffBO, int descentdim)
+proc descend_finished(ideal ctemp, int btmp, list CoeffBO, int descentdim) //DList ist falscher Input. Wir brauchen das bereits mit E geschnittene Zentrum
 "USAGE: descend_finished(list CoeffBO); requires the last coefficient basic object as input 
 RETURN: 0, if the descend is not finished, 1 if the potential center  is a point, 2 if the input was zero, 3 if the correct center was calculated in the step before, 4 if the potential center is smooth and snc with the exceptional divisors
 EXAMPLE: example descend_finished; shows an example
@@ -184,8 +190,8 @@ EXAMPLE: example descend_finished; shows an example
 
 	//ToDo: zentrum muss punkt in hyperfläche maximalen kontakts sein!!!!!!!
 	
-	int btmp = size(DList);
-	ideal ctemp = DList[btmp];					
+	//int btmp = size(DList);
+	//ideal ctemp = DList[btmp];					
 	//if(dim(ctemp) - descentdim == 0)							// point -> correct center
 	if(dim(ctemp) == 0){
 		return(1);
@@ -200,6 +206,103 @@ EXAMPLE: example descend_finished; shows an example
 		return(4);
 	}
 	return(0);												// not finished
+}
+proc IsMonomialCase(list BO, list DList){
+	if(EqualityOfIdeal(BO[2],1) == 0){return(0);}			//w-ord not equal 0 resp. Coeffideal not equal 1
+	
+	ideal J = DList(size(DList));
+	int sizeJ = size(J);
+	if(sizeJ == 1){					// only one generator
+		if(size(J[1]) == 1){		//the single generator is a monomial
+		return(1);	
+		}
+	} 
+	return(0);
+}
+//TODO: Change the names of the different lists!!!
+proc monomialCase(list BO, list DList){				//requires that DList.last is generated by a single monomial 
+	def r = basering;
+	int n = nvars(r);
+	int j,k,l;
+	
+	int b = BO[3][1]; 				// steht hier das richtige b drin?
+	
+	ideal J = DList[size(DList)];
+	list Explist = leadexp(J[1]);
+	list retListtmp;
+	list tmplist;
+	
+	for (j =1; j<= n;j++){
+		if(Explist[j] != 0){
+			retListtmp[size(retListtmp)] = Explist; 
+		}
+	}
+	
+	for(l = 1; l<= n;l++){														//im schlimmsten fall n-mal ausnullen
+		for(k=1;k<=size(retListtmp);k++){										//in jeder Liste
+			for(j=1; j<= n;j++){												//nulle eintrag j aus, sofern notwendig
+				if(retListtmp[k][j] != 0){
+					if(SumList(retListtmp[k]) >= b + retListtmp[k][j])			//entry [k][j] superfluent
+					tmplist = retListtmp[k];
+					tmplist[j] = 0;
+					retListtmp[size(retListtmp)] = tmplist;
+				}
+			}
+		}
+	}
+	
+	//Delete entries of not minimal codimension:
+	list retList = list();
+	int minCodim = NumbNotZeroEntries(retListtmp[1]);
+	
+	for(k = 2; k<= size(retListtmp); k++){
+		if(NumbNotZeroEntries(retListtmp[k]) == minCodim){
+			retList[size(retList)] = retListtmp[k];
+		}
+		if(NumbNotZeroEntries(retListtmp[k]) < minCodim){
+			minCodim = NumbNotZeroEntries(retListtmp[k]);
+			retList = list();
+			retList[1] = retListtmp[k];
+		}
+	}
+	
+	//Only keep the ones with maximal exponents:
+	int maxsum;
+	list tmplist;
+	for (k = 1;k<=size(retList); k++){
+		if(SumList(retList[k]) == maxsum){
+			tmplist[size(tmplist)] = retList[k];
+		}
+		if(SumList(retList[k]) > maxsum){
+			maxsum = SumList(retList[k]);
+			tmplist = list();
+			tmplist[1] = tmplist[k];
+		}
+	}
+	
+	//calculate indexlists for l(\xi) in the monomial case of Villamayor
+	 
+}
+
+proc SumList(list L){
+	int sum = 0;
+	int i;
+	for(i=1;i<=size(L);i++){
+		sum+= L[i];
+	}
+	return(sum);
+}
+
+proc NumbNotZeroEntries(list L){
+	int counter = 0;
+	int i;
+	
+	for(i=1; i<=size(L); i++){
+		if(L[i] != 0){
+			counter++;
+		}
+	}
+	return(counter);
 }
 
 proc isSmooth(btmp)		//TODO wie die ordnung abfangen?
@@ -246,10 +349,10 @@ EXAMPLE: example SuccessorsCharts; shows an example
 		//TODO: Was muss alles übertragen werden?
 		ideal last_map = bM;
 		//ideal total_map = BlowUpMap(total_map);
-		//def path = imap(r,path);
-		//path=path,[chartnumber,j];
+		def path = imap(r,path);
+		path=path,[chartnumber,j];
 		//TODO: mehr exportieren?
-		//export(path);
+		export(path);
 		export(last_map);
 		//export(total_map);
 	}
