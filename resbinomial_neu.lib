@@ -281,8 +281,28 @@ proc monomialCase(list BO, list DList){				//requires that DList.last is generat
 	}
 	
 	//calculate indexlists for l(\xi) in the monomial case of Villamayor
+	list indexlists = CreateIndexListsMonomialcase(tmplist);
+	// berechne k, welches lexikographisch maximal unter den indexlisten ist
+	// transformiere anschließend zurück zu k-ter irreduzibler komponente, welche dem Zentrum entspricht!
 	 
 }
+proc CreateIndexListsMonomialcase(list L){ 		//retlist[k] corresponds to L[k]!
+	def r = basering;
+	int n = nvars(r);
+	int j,k;
+	list retlist = list();
+	
+	for(k = 1;k<=size(L);k++){
+		retlist[k] = list();
+		for(j=1;j<=n;j++){
+			if(L[k][j] != 0){
+				retlist[k][size(retlist[k])+1] = j;
+			}
+		}
+	}
+	return(retlist);	
+}
+
 
 proc SumList(list L){
 	int sum = 0;
