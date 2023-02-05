@@ -53,12 +53,12 @@ EXAMPLE: example resbinomial2; shows an example
 	}
 	//TODO
 	for(i=2; i<= size(BlowUpTree); i++){
-		//print(i);
+		print(i);
 		if(defined(actual_chart)){kill actual_chart;} 
 		def actual_chart = BlowUpTree[i];
 		setring(actual_chart);
 		//intvec b_old = BO[3];
-		if (i == 3 or i == 5){print(BO[2]);}
+		if (i == 3){~;}
 		list descend = DescendInDimension(BO);
 		list descend_BOlist = descend[1];
 		intvec b_new = descend[2];
@@ -104,8 +104,7 @@ EXAMPLE: example DescendInDimension; shows an example
 	list CoeffBOList;
 	CoeffBOList[1] = BO;
 	list BOtmp = BO;
-	intvec b_old = BO[3];
-	
+	intvec b_old = BO[3];	
 	list DList = DeltaList(BOtmp);
 	int btmp = size(DList);
 	ideal center = DList[btmp];
@@ -135,36 +134,36 @@ EXAMPLE: example DescendInDimension; shows an example
 		BOtmp = Coeff(BOtmp,b[size(b)]);
 		CoeffBOList[size(CoeffBOList)+1] = BOtmp;
 
-		// Erst Deltalist und b berechnen, dann schneiden dann coeff berechnen!!!!
-		DList = DeltaList(BOtmp);
-		btmp = size(DList);		
-		b[size(b)+1]  = btmp;
-		//BO7 auf jeder Stufe hinzufügen für inters_E
-		if(orderdecreased == 0 and (size(b_old) >= counter+2)){ 
-			if(b[counter+2] == b_old[counter+2]){
-				BO7new[counter + 2 ] = BO7old[counter + 2];
+		if(IsMonomialCase(BOtmp,DList) == 0){				//GGF NOCH WO ANDERSHIN SCHIEBEN
+			// Erst Deltalist und b berechnen, dann schneiden dann coeff berechnen!!!!
+			DList = DeltaList(BOtmp);
+			btmp = size(DList);		
+			b[size(b)+1]  = btmp;
+			//BO7 auf jeder Stufe hinzufügen für inters_E
+			if(orderdecreased == 0 and (size(b_old) >= counter+2)){ 
+				if(b[counter+2] == b_old[counter+2]){
+					BO7new[counter + 2 ] = BO7old[counter + 2];
+				}
+		
+				if(b[counter+2] < b_old[counter+2]){						
+					BO7new[counter+1] = size(BOtmp[4]);						//too many intersetions but not a problem
+					orderdecreased = 1;
+					BO7new[counter+2] = -1;
+				}
+			} else{
+				BO7new[counter + 2 ] = -1;
 			}
 		
-			if(b[counter+2] < b_old[counter+2]){						
-				BO7new[counter+1] = size(BOtmp[4]);						//too many intersetions but not a problem
-				orderdecreased = 1;
-				BO7new[counter+2] = -1;
-			}
-		} else{
-			BO7new[counter + 2 ] = -1;
-		}
-		
-		BOtmp[7][1] = BO7new[counter + 2 ];
-		E = inters_E(BOtmp);
-		if(isMonomialCase(BOtmp) == 0){				//GGF NOCH WO ANDERSHIN SCHIEBEN
+			BOtmp[7][1] = BO7new[counter + 2 ];
+			E = inters_E(BOtmp);
 			CoeffBOList[counter+2][2] = mstd(E[1]^b[counter+2] + CoeffBOList[counter+2][2])[2];
 			center = std(DList[btmp]+E[1]);
 			counter++;
 		}else{
-			center = monomialCase(BOtmp);
+			center = monomialCase(BOtmp,DList);
 		}
 	}
-	if(EqualityOfIdeal(center, BO[2])){					//Reicht das?
+	if(EqualityOfIdeal(center, BO[2])){					//Reicht das als Abbruchkriterium???
 		center = 1;
 	}
 
@@ -207,14 +206,19 @@ EXAMPLE: example descend_finished; shows an example
 	}
 	return(0);												// not finished
 }
+
 proc IsMonomialCase(list BO, list DList){
-	if(EqualityOfIdeal(BO[2],1) == 0){return(0);}			//w-ord not equal 0 resp. Coeffideal not equal 1
-	
-	ideal J = DList(size(DList));
+	if(EqualityOfIdeal(BO[2],1) == 0){
+		return(0);
+	}			//w-ord not equal 0 resp. Coeffideal not equal 1
+	if(EqualityOfIdeal(BO[2],1) == 1){
+		return(1);
+	}	
+	ideal J = DList[size(DList)];
 	int sizeJ = size(J);
 	if(sizeJ == 1){					// only one generator
 		if(size(J[1]) == 1){		//the single generator is a monomial
-		return(1);	
+			return(1);	
 		}
 	} 
 	return(0);
@@ -283,9 +287,27 @@ proc monomialCase(list BO, list DList){				//requires that DList.last is generat
 	//calculate indexlists for l(\xi) in the monomial case of Villamayor
 	list indexlists = CreateIndexListsMonomialcase(tmplist);
 	// berechne k, welches lexikographisch maximal unter den indexlisten ist
+	list smallestlist = indexlists[1];
+	int currentindex = 1;
+	for(k=2;k<= size(indexlists);k++){
+		smallestlist = smallerList(indexlists[k],smallestlist);
+		if(smallestlist[2] == 1){
+			currentindex = k;
+		}
+	}
+	//in indexlists the entry currentindex is the minimal entry, so tmplist[currentindex] is the minimal leadexp
 	// transformiere anschließend zurück zu k-ter irreduzibler komponente, welche dem Zentrum entspricht!
-	 
+	ideal center;
+	for(j=1; j<=size(indexlists[currentindex]); j++){
+		if(indexlists[currentindex][j] != 0){
+			center[j] = var(j)^indexlists[currentindex][j];
+		}
+	}
+	
+	return(center);
 }
+
+
 proc CreateIndexListsMonomialcase(list L){ 		//retlist[k] corresponds to L[k]!
 	def r = basering;
 	int n = nvars(r);
@@ -325,13 +347,31 @@ proc NumbNotZeroEntries(list L){
 	return(counter);
 }
 
+
+proc smallerList(list L1, list L2){
+	int i;
+	int minsize = min(size(L1),size(L2));
+	for (i = 1;i<= minsize; i++){
+		if(L1[i]< L2[i]){
+			return(L1,1);
+		}
+		if(L2[i] < L1[i]){
+			return(L2,2);
+		}
+	}
+	if(size(L1)<size(L2)){
+		return(L1,1);
+	}
+	return(L2,2);
+}
+
+
 proc isSmooth(btmp)		//TODO wie die ordnung abfangen?
 "USAGE: isSmooth(list BO); checks whether BO[2] is smooth 
 RETURN: 1, if it is smooth, 0 otherwise
 EXAMPLE: example isSmooth; shows an example
 "
 {								//TODO: so oder anders?
-	
 	if(btmp == 1){
 		return(1);
 	}
@@ -385,8 +425,6 @@ EXAMPLE: example SuccessorsCharts; shows an example
 
 
 
-
-
 proc UpdateBO7(intvec b_new,intvec b_old,list BO){
 	int i,j;
 	// ersetze BO-list im Input durch den gesamten Abstieg? -> Dann ist hier auch klar, dass wir das originale BO in der Abstiegsliste brauchen
@@ -423,8 +461,4 @@ proc UpdateBO7(intvec b_new,intvec b_old,list BO){
 	
 	BO[7] = newBO7;
 	return(BO)
-}
-
-proc resbinomialCenter(list BO,intvec b){
-	//not necessary 
 }
