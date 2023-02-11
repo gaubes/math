@@ -55,13 +55,11 @@ EXAMPLE: example resbinomial2; shows an example
 		BlowUpTree = BlowUpTree + SuccessorsCharts(BO, center, 1);
 		//center;
 	}
-	//TODO
 	for(i=2; i<= size(BlowUpTree); i++){
 		print(i);
 		if(defined(actual_chart)){kill actual_chart;} 
 		def actual_chart = BlowUpTree[i];
 		setring(actual_chart);
-		//intvec b_old = BO[3];
 		//if (i == 3){~;}
 		list descend = DescendInDimension(BO);
 		list descend_BOlist = descend[1];
@@ -69,21 +67,10 @@ EXAMPLE: example resbinomial2; shows an example
 		ideal center = descend[3];
 		print("center:");
 		print(center);
-		//BO[7] = UpdateBO7(b_new,b_old,BO); // hier das unterste!!! BO nehmen um die Anzahl der exzeptionellen Divisoren zu erhalten!!!					
-		// auf jeder Stufe im Abstieg BO7 hinzufügen
-		//WO im Code?
-		//for(j=1;j<=size(descend_BOlist);j++){
-		//	descend_BOlist[j][7] = list();
-		//	for(k=j;size(descend_BOlist);k++){
-		//		descend_BOlist[j][7][size(descend_BOlist[j])+1] = BO[7][k];
-		//	}
-		//}
+
 		b = b_new;
 		BO[3] = b_new;
 		
-		//ideal center = resbinomialCenter(BO,b);
-		//ideal center = descend_BOlist[size(descend_BOlist)][2];
-		//if(finished(BO))
 		if(EqualityOfIdeal(center,1) == 1){								//Reicht das als abbruch Bedingung?
 			EndCharts[size(EndCharts)+1] = BlowUpTree[i];
 		}else{
@@ -189,7 +176,7 @@ EXAMPLE: example DescendInDimension; shows an example
 			counter++;
 		}
 		if(casenumber == 3){
-			center = monomialCase(BOtmp,DList);
+			center = monomialCase(BOcontrol,DList);
 		}
 	}
 	if(EqualityOfIdeal(center, BO[2])){					//Reicht das als Abbruchkriterium???
@@ -269,37 +256,48 @@ proc monomialCase(list BO, list DList){				//requires that DList.last is generat
 	
 	int b = BO[3][1]; 				// steht hier das richtige b drin?
 	
-	ideal J = DList[size(DList)];
+	ideal J = std(reduce(BO[2],BO[1]));
 	list Explist = leadexp(J[1]);
 	list retListtmp;
+	retListtmp[1] = list();
 	list tmplist;
 
-		print(J);
-	for (j =1; j<= n;j++){
-		if(Explist[1][j] != 0){
-			retListtmp[size(retListtmp)+1] = Explist[1][j]; 
-		}
+	for (j=1; j<= n;j++){
+		retListtmp[1][j] = Explist[1][j]; 
 	}
-	for(l = 1; l<= n;l++){														//im schlimmsten fall n-mal ausnullen
-		for(k=1;k<=size(retListtmp);k++){										//in jeder Liste
-			for(j=1; j<= n;j++){												//nulle eintrag j aus, sofern notwendig
-				if(retListtmp[k][j] != 0){
-					if(SumList(retListtmp[k]) >= (b + retListtmp[k][j]))			//entry [k][j] superfluent
-					tmplist = retListtmp[k];
-					tmplist[j] = 0;
-					retListtmp[size(retListtmp)] = tmplist;
+
+	if (SumList(retListtmp[1]) > b ){
+		for(l = 1; l<= n;l++){														//im schlimmsten fall n-mal ausnullen
+			for(k=1;k<=size(retListtmp);k++){										//in jeder Liste
+				for(j=1; j<= n;j++){												//nulle eintrag j aus, sofern notwendig
+					if(retListtmp[k][j] != 0){
+						if(SumList(retListtmp[k]) >= (b + retListtmp[k][j])){			//entry [k][j] superfluent
+							tmplist = retListtmp[k];
+							tmplist[j] = 0;
+							retListtmp[size(retListtmp)+1] = tmplist;
+						}
+					}
 				}
 			}
 		}
-	}
+	} else{		//only one unique center is possible
+		ideal center;
+		for(j=1; j<=size(retListtmp[1]); j++){
+			if(retListtmp[1][j] != 0){
+				center[j] = var(j)^retListtmp[1][j];
+			}
+		}
 	
+		return(center);
+	}
+
 	//Delete entries of not minimal codimension:
 	list retList = list();
 	int minCodim = NumbNotZeroEntries(retListtmp[1]);
 	
 	for(k = 2; k<= size(retListtmp); k++){
 		if(NumbNotZeroEntries(retListtmp[k]) == minCodim){
-			retList[size(retList)] = retListtmp[k];
+			retList[size(retList)+1] = retListtmp[k];
 		}
 		if(NumbNotZeroEntries(retListtmp[k]) < minCodim){
 			minCodim = NumbNotZeroEntries(retListtmp[k]);
@@ -307,13 +305,14 @@ proc monomialCase(list BO, list DList){				//requires that DList.last is generat
 			retList[1] = retListtmp[k];
 		}
 	}
-	
+	print("retList:");
+	retList;
 	//Only keep the ones with maximal exponents:
 	int maxsum;
 	list tmplist;
 	for (k = 1;k<=size(retList); k++){
 		if(SumList(retList[k]) == maxsum){
-			tmplist[size(tmplist)] = retList[k];
+			tmplist[size(tmplist)+1] = retList[k];
 		}
 		if(SumList(retList[k]) > maxsum){
 			maxsum = SumList(retList[k]);
@@ -368,7 +367,7 @@ proc SumList(list L){
 	int sum = 0;
 	int i;
 	for(i=1;i<=size(L);i++){
-		sum+= L[i];
+		sum = sum + L[i];
 	}
 	return(sum);
 }
