@@ -145,6 +145,8 @@ example
 }
 //----------------------------------------------------------------------
 //TODO
+//BO killen wenn final chart für binresolve
+//centerlist killen, wenn leer 
 proc determinantal_resolve(matrix M, int r){
 	
 	

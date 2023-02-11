@@ -3219,7 +3219,7 @@ EXAMPLE: example Coeff;    shows an example
    intvec merk;
    if(!defined(debugCoeff))
    {
-     int debugCoeff;
+     int debugCoeff ;
    }
    ideal C;
    list L;
@@ -3358,23 +3358,51 @@ EXAMPLE: example Coeff;    shows an example
 //--- Step 3
    BO[1]=BO[1]+Z;
    BO[2]=C;
+
+   ideal Cold = C;
+   ideal Iweak = C;
+   ideal Icontrol = C;
+   int counter = 0;
    for(i=1;i<=size(BO[4]);i++)
    {
       BO[6][i]=0;             // reset intersection indicator
       BO[4][i]=BO[4][i]+Z;    // intersect the E_i
       if(i<=ma)
       {
-        BO[2]=sat(BO[2],BO[4][i]+BO[1])[1];
+        //BO[2]=sat(BO[2],BO[4][i]+BO[1])[1];
                        // "strict transform" of J w.r.t E, not "total"
-      }
-   }
-   if(debugCoeff)
+                       //weak transform of J w.r.t E 
+      while(1){
+		Iweak = quotient(Iweak, BO[4][i]+BO[1]);
+
+		if(EqualityOfIdeal(Iweak *BO[4][i]+BO[1],Cold ) == 0){ //nochmal nachfragen
+			break;
+		} 
+		Cold = Iweak;
+		counter++;
+		}               //weak transform of J w.r.t E
+		if(counter >b){				//otherwise weak and controlled transform are the same
+			Cold = BO[2];
+			Icontrol = BO[2];
+			for(k=1;k<=b ;k++){
+				Icontrol = quotient(Icontrol, BO[4][i]+BO[1]);
+				if(EqualityOfIdeal(C *BO[4][i]+BO[1],Cold) == 0){ //nochmal nachfragen
+					break;
+				} 
+				Cold = Icontrol;
+			}               //controlled transform of J w.r.t E and b
+		}
+	}
+	Icontrol = Cold;
+	BO[2] = Iweak;
+  }
+  if(debugCoeff)
    {
      "----> In Coeff:";
      " J after saturation:";
      BO[2];
    }
-   return(BO);
+   return(list(BO,Icontrol));
 }
 example
 {"EXAMPLE:";
