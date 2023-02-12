@@ -54,11 +54,11 @@ EXAMPLE: example resbinomial2; shows an example
 		if(defined(actual_chart)){kill actual_chart;} 
 		def actual_chart = BlowUpTree[i];
 		setring(actual_chart);
-		
-		if(EqualityOfIdeal(BO[2],1) == 1){
+		BO[2];
+		if(isSmooth(BO[2]) == 1){
 			ideal center = 1;		//finished
 		}else{	
-			if(i==3){~;}
+			//if(i==3){~;}
 			list descend = DescendInDimension(BO);
 			list descend_BOlist = descend[1];
 			intvec b_new = descend[2];
@@ -67,7 +67,7 @@ EXAMPLE: example resbinomial2; shows an example
 			//if (i == 4 or i == 10 or i == 20){
 			print("center:");
 			print(center);
-			descend_BOlist;
+			descend_BOlist[1];
 			//}
 		}
 		print(path);
@@ -213,7 +213,7 @@ EXAMPLE: example descend_finished; shows an example
 	if(EqualityOfIdeal(CoeffBO[2],1) == 1){					// correct center was calculated in the step before
 		return(3);
 	}
-	if(btmp == 1  && normalCross(ctemp,CoeffBO[4]) == 1){		//isSmooth passt noch nicht!!!	// isSmooth(C) and snc(C,E);
+	if(isSmooth(ctemp) == 1  && normalCross(ctemp,CoeffBO[4]) == 1){		//isSmooth passt noch nicht!!!	// isSmooth(C) and snc(C,E);
 		return(4);
 	}
 	return(0);												// not finished
@@ -404,16 +404,13 @@ proc smallerList(list L1, list L2){
 }
 
 
-proc isSmooth(btmp)		//TODO via slocus?
+proc isSmooth(ideal J)		//TODO via slocus?
 "USAGE: isSmooth(list BO); checks whether BO[2] is smooth 
 RETURN: 1, if it is smooth, 0 otherwise
 EXAMPLE: example isSmooth; shows an example
 "
-{								//TODO: anders
-	if(btmp == 1){
-		return(1);
-	}
-	return(0);
+{				
+	return(deg(std(slocus(J))) == 0);
 }
 
 
