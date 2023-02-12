@@ -58,10 +58,12 @@ EXAMPLE: example resbinomial2; shows an example
 		if(EqualityOfIdeal(BO[2],1) == 1){
 			ideal center = 1;		//finished
 		}else{	
+			if(i==3){~;}
 			list descend = DescendInDimension(BO);
 			list descend_BOlist = descend[1];
 			intvec b_new = descend[2];
 			ideal center = descend[3];
+			
 			//if (i == 4 or i == 10 or i == 20){
 			print("center:");
 			print(center);
@@ -151,13 +153,13 @@ EXAMPLE: example DescendInDimension; shows an example
 			if(orderdecreased == 0 and (size(b_old) >= counter+2)){ 
 				if(b[counter+2] == b_old[counter+2]){
 					BO7new[counter + 2 ] = BO7old[counter + 2];
-					//TODO: MIT ALLEN EXC DIV SCHNEIDEN
+					
 				}
 		
 				if(b[counter+2] < b_old[counter+2]){						
 					BO7new[counter+1] = size(BOtmp[4]);						//too many intersections but not a problem
 					orderdecreased = 1;
-					BO7new[counter+2] = -1;
+					BO7new[counter+2] = 0;		//ggf aendern. vorher war hier -1
 				}
 			} else{
 				BO7new[counter + 2 ] = -1;
@@ -211,7 +213,7 @@ EXAMPLE: example descend_finished; shows an example
 	if(EqualityOfIdeal(CoeffBO[2],1) == 1){					// correct center was calculated in the step before
 		return(3);
 	}
-	if(btmp == 1  && normalCross(ctemp,CoeffBO[4]) == 1){			// isSmooth(C) and snc(C,E);
+	if(btmp == 1  && normalCross(ctemp,CoeffBO[4]) == 1){		//isSmooth passt noch nicht!!!	// isSmooth(C) and snc(C,E);
 		return(4);
 	}
 	return(0);												// not finished
@@ -402,12 +404,12 @@ proc smallerList(list L1, list L2){
 }
 
 
-proc isSmooth(btmp)		//TODO wie die ordnung abfangen?
+proc isSmooth(btmp)		//TODO via slocus?
 "USAGE: isSmooth(list BO); checks whether BO[2] is smooth 
 RETURN: 1, if it is smooth, 0 otherwise
 EXAMPLE: example isSmooth; shows an example
 "
-{								//TODO: so oder anders?
+{								//TODO: anders
 	if(btmp == 1){
 		return(1);
 	}
