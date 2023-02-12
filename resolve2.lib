@@ -3375,23 +3375,24 @@ EXAMPLE: example Coeff;    shows an example
                        //weak transform of J w.r.t E 
       while(1){
 		Iweak = quotient(Iweak, BO[4][i]+BO[1]);
-		if(EqualityOfIdeal(Iweak *BO[4][i]+BO[1],Cold ) == 0){ //nochmal nachfragen
+		if(EqualityOfIdeal(Iweak *BO[4][i]+BO[1],Cold ) == 0){ 
 			break;
 		} 
 		Cold = Iweak;
-		counter++;
+		//counter++;
 		}               //weak transform of J w.r.t E
-		if(counter >b){				//otherwise weak and controlled transform are the same
+		Iweak = Cold;
+		//if(counter <b){				//otherwise weak and controlled transform are the same
 			Cold = BO[2];
 			Icontrol = BO[2];
 			for(k=1;k<=b ;k++){
 				Icontrol = quotient(Icontrol, BO[4][i]+BO[1]);
-				if(EqualityOfIdeal(C *BO[4][i]+BO[1],Cold) == 0){ //nochmal nachfragen
+				if(EqualityOfIdeal(Icontrol *BO[4][i]+BO[1],Cold) == 0){ 
 					break;
 				} 
 				Cold = Icontrol;
 			}               //controlled transform of J w.r.t E and b
-		}
+		//}
 	}
 	Icontrol = Cold;
 	BO[2] = Iweak;

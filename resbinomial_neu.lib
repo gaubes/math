@@ -58,7 +58,7 @@ EXAMPLE: example resbinomial2; shows an example
 		if(isSmooth(BO[2]) == 1){
 			ideal center = 1;		//finished
 		}else{	
-			//if(i==3){~;}
+			//if(i==4){~;}
 			list descend = DescendInDimension(BO);
 			list descend_BOlist = descend[1];
 			intvec b_new = descend[2];
@@ -112,7 +112,8 @@ EXAMPLE: example DescendInDimension; shows an example
 		BO7new[1] = BO7old[1];
 	}	
 	if(b[1] < b_old[1]){
-		BO7new[1] = size(BOtmp[4]);
+		//BO7new[1] = size(BOtmp[4]);
+		BO7new[1] = 0;
 		orderdecreased = 1;
 	}
 	
@@ -162,7 +163,7 @@ EXAMPLE: example DescendInDimension; shows an example
 					BO7new[counter+2] = 0;		//ggf aendern. vorher war hier -1
 				}
 			} else{
-				BO7new[counter + 2 ] = -1;
+				BO7new[counter + 2 ] = 0;
 			}
 		
 			BOtmp[7][1] = BO7new[counter + 2 ];

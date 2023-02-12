@@ -42,7 +42,7 @@ LIB "matrix.lib";
 LIB "resolve.lib";
 LIB "general.lib";	//absValue
 
-LIB "resbinomial.lib"; //only for performancetests
+LIB "resbinomial_neu.lib"; //only for performancetests
 
 proc blowUp3(ideal J,ideal C,list #)
 "USAGE:  blowUp3(J,C[,W][,E]);
