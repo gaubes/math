@@ -3367,14 +3367,14 @@ EXAMPLE: example Coeff;    shows an example
    {
       BO[6][i]=0;             // reset intersection indicator
       BO[4][i]=BO[4][i]+Z;    // intersect the E_i
-      if(i<=ma)
+      if(BO[4][i] != 1)		//geaendert!!!
+      //if(i<=ma)
       {
         //BO[2]=sat(BO[2],BO[4][i]+BO[1])[1];
                        // "strict transform" of J w.r.t E, not "total"
                        //weak transform of J w.r.t E 
       while(1){
 		Iweak = quotient(Iweak, BO[4][i]+BO[1]);
-
 		if(EqualityOfIdeal(Iweak *BO[4][i]+BO[1],Cold ) == 0){ //nochmal nachfragen
 			break;
 		} 

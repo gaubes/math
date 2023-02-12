@@ -54,21 +54,25 @@ EXAMPLE: example resbinomial2; shows an example
 		if(defined(actual_chart)){kill actual_chart;} 
 		def actual_chart = BlowUpTree[i];
 		setring(actual_chart);
-		//if (i == 3){~;}
-		list descend = DescendInDimension(BO);
-		list descend_BOlist = descend[1];
-		intvec b_new = descend[2];
-		ideal center = descend[3];
-		print("center:");
-		print(center);
-
-		b = b_new;
-		BO[3] = b_new;
 		
+		if(EqualityOfIdeal(BO[2],1) == 1){
+			ideal center = 1;		//finished
+		}else{	
+			list descend = DescendInDimension(BO);
+			list descend_BOlist = descend[1];
+			intvec b_new = descend[2];
+			ideal center = descend[3];
+			//if (i == 4 or i == 10 or i == 20){
+			print("center:");
+			print(center);
+			descend_BOlist;
+			//}
+		}
+		print(path);
 		if(EqualityOfIdeal(center,1) == 1){								//Reicht das als abbruch Bedingung?
 			EndCharts[size(EndCharts)+1] = BlowUpTree[i];
 		}else{
-			BlowUpTree = BlowUpTree + SuccessorsCharts(BO, center, i);
+			BlowUpTree = BlowUpTree + SuccessorsCharts(descend_BOlist[1], center, i);
 			if(i == 3 or i == 5){center;}
 		}
 	}
@@ -130,6 +134,7 @@ EXAMPLE: example DescendInDimension; shows an example
 		BOcontrol[3] = size(DeltaList(BOcontrol));
 		CoeffBOList[size(CoeffBOList)+1] = BOtmp;
 		casenumber = IsMonomialCase(BOtmp,DList,counter);
+		
 		if(casenumber == 2){
 			//Intersection of basic objects (W,(\overline{J},b'),E) \cap (W,(J,b),E) =  (W,(\overline{J}^b+J^{b'},bb'),E) 
 			BOtmp[2] = BOtmp[2]^BOcontrol[3] + BOcontrol[2] ^b[size(b)];
@@ -271,10 +276,12 @@ proc monomialCase(list BO, list DList){				//requires that DList.last is generat
 		ideal center;
 		for(j=1; j<=size(retListtmp[1]); j++){
 			if(retListtmp[1][j] != 0){
-				center[j] = var(j)^retListtmp[1][j];
+				//center[j] = var(j)^retListtmp[1][j];		//warum potenz setzen?
+				center[j] = var(j);
 			}
 		}
-	
+		//add ambient space to center
+		center = center + BO[1];
 		return(center);
 	}
 
@@ -292,8 +299,7 @@ proc monomialCase(list BO, list DList){				//requires that DList.last is generat
 			retList[1] = retListtmp[k];
 		}
 	}
-	print("retList:");
-	retList;
+
 	//Only keep the ones with maximal exponents:
 	int maxsum;
 	list tmplist;
@@ -327,6 +333,12 @@ proc monomialCase(list BO, list DList){				//requires that DList.last is generat
 			center[j] = var(j)^indexlists[currentindex][j];
 		}
 	}
+	print("vorher");
+	center;
+	//add ambient space to center
+	center = center + BO[1];
+	print("nachher");
+	center;	
 	
 	return(center);
 }
