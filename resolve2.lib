@@ -3359,44 +3359,50 @@ EXAMPLE: example Coeff;    shows an example
    BO[1]=BO[1]+Z;
    BO[2]=C;
 
-   ideal Cold = C;
+   ideal Cweakold = C;
+   ideal Istrict;
    ideal Iweak = C;
+
    ideal Icontrol = C;
+   ideal Ccontrolold = C;
    int counter = 0;
    for(i=1;i<=size(BO[4]);i++)
    {
       BO[6][i]=0;             // reset intersection indicator
-      BO[4][i]=BO[4][i]+Z;    // intersect the E_i
-      if(BO[4][i] != 1)		//geaendert!!!
-      //if(i<=ma)
-      {
+      if(BO[4][i] != 1){
+		BO[4][i]=BO[4][i]+Z;    // intersect the E_i
+     		//geaendert!!!
+		//	if(i<=ma)
+			//{
         //BO[2]=sat(BO[2],BO[4][i]+BO[1])[1];
                        // "strict transform" of J w.r.t E, not "total"
                        //weak transform of J w.r.t E 
-      while(1){
-		Iweak = quotient(Iweak, BO[4][i]+BO[1]);
-		if(EqualityOfIdeal(Iweak *BO[4][i]+BO[1],Cold ) == 0){ 
-			break;
-		} 
-		Cold = Iweak;
-		//counter++;
-		}               //weak transform of J w.r.t E
-		Iweak = Cold;
-		//if(counter <b){				//otherwise weak and controlled transform are the same
-			Cold = BO[2];
-			Icontrol = BO[2];
-			for(k=1;k<=b ;k++){
-				Icontrol = quotient(Icontrol, BO[4][i]+BO[1]);
-				if(EqualityOfIdeal(Icontrol *BO[4][i]+BO[1],Cold) == 0){ 
-					break;
-				} 
-				Cold = Icontrol;
-			}               //controlled transform of J w.r.t E and b
-		//}
-	}
-	Icontrol = Cold;
-	BO[2] = Iweak;
+     
+				counter = 0;
+				Cweakold = Iweak;
+				while(EqualityOfIdeal(Iweak *BO[4][i]+BO[1],Cweakold ) == 1 or counter == 0){
+					Cweakold = Iweak;
+					//Iweak = quotient(Iweak, BO[4][i]+BO[1]);
+					Iweak = quotient(Iweak, BO[4][i]);
+					counter++;				
+				}               //weak transform of J w.r.t E
+				Iweak = Cweakold;
+				Ccontrolold = Icontrol;
+				for(k=1;k<=b ;k++){
+					//Icontrol = quotient(Icontrol, BO[4][1]+BO[1]);
+					Icontrol = quotient(Icontrol, BO[4][1]);
+					if( k < b){
+						Ccontrolold = Icontrol;
+					}else{
+						Icontrol = Ccontrolold;
+					}
+				}               //controlled transform of J w.r.t E and b
+			//}
+		}
   }
+	Icontrol = C;
+  	BO[2] = Iweak;
+	//BO[2] = Istrict;
   if(debugCoeff)
    {
      "----> In Coeff:";

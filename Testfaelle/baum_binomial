@@ -1,0 +1,16 @@
+graph G{
+1[shape=box,label="chart 1"];
+2[shape=box,label="chart 2 "];
+3[shape=box,label="chart 3 "];
+4[shape=box,label="chart 4 "];
+5[shape=box,label="chart 5 "];
+6[shape=box,label="chart 6 "];
+7[shape=box,label="chart 7 "];
+8[shape=box,label="chart 8 "];
+9[shape=box,label="chart 9 "];
+10[shape=box,label="chart 10 "];
+11[shape=box,label="chart 11 "];
+12[shape=box,label="chart 12 "];
+13[shape=box,label="chart 13 "];
+14[shape=box,label="chart 14 "];
+15[shape=box,label="chart 15 "];
