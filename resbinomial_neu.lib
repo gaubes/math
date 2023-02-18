@@ -36,7 +36,7 @@ EXAMPLE: example resbinomial2; shows an example
 	int i,j,k;
 	
 	list BO = createBO(J);
-	list descend = DescendInDimension(BO);
+	list descend = DescendInDimension(BO,1);
 	list descend_BOlist = descend[1];
 	intvec b = descend[2];
 	//BO[3] = b;
@@ -48,6 +48,7 @@ EXAMPLE: example resbinomial2; shows an example
 		EndCharts[1] = BlowUpTree[1];
 	}else{
 		BlowUpTree = BlowUpTree + SuccessorsCharts(descend_BOlist[1], center, 1);
+		center;
 	}
 	for(i=2; i<= size(BlowUpTree); i++){
 		print(i);
@@ -55,30 +56,30 @@ EXAMPLE: example resbinomial2; shows an example
 		def actual_chart = BlowUpTree[i];
 		setring(actual_chart);
 		print(path);
-		//BO;
+		BO;
 		if(isSmooth(BO[2]) == 1){
 			ideal center = 1;		//finished
 		}else{	
-			
-			list descend = DescendInDimension(BO);
+			//if(i==11 or i == 7){~;}
+			list descend = DescendInDimension(BO,i);
 			list descend_BOlist = descend[1];
 			intvec b_new = descend[2];
 			ideal center = descend[3];
 			
-			//if (i == 4 or i == 10 or i == 20){
+		
 			//print("center:");
 			
 			descend;
 			print(center);
-			//if(i==11  or i == 5 or i == 3){~;}
-			//}
+			//if(i==11  or i == 7 or i == 3){~;}
+			
 		}
 		print(path);
 		if(EqualityOfIdeal(center,1) == 1){								//Reicht das als abbruch Bedingung?
 			EndCharts[size(EndCharts)+1] = BlowUpTree[i];
 		}else{
 			BlowUpTree = BlowUpTree + SuccessorsCharts(descend_BOlist[1], center, i);
-			if(i == 3 or i == 5){center;}
+			//if(i == 3 or i == 5){center;}
 		}
 	}
 
@@ -86,23 +87,50 @@ EXAMPLE: example resbinomial2; shows an example
 	return(EndCharts,BlowUpTree);
 }example{
 	ring r = 0,(x,y,z),dp;
-	ideal J = z2-x2y2;
+	ideal J = z3-x2y2;
 	resbinomial2(J);
 }
 
-proc DescendInDimension(list BO) 
+proc updateAmbientSpace(list BO){
+	int j,k;
+	list DList = DeltaList(BO);
+	list tmpBO = BO;
+	list DListtmp;
+
+	for(j = 1;j<=size(BO[2]);j++){
+		if(size(DList) == 1){
+			tmpBO[2] = BO[2][j];
+			DListtmp = DeltaList(tmpBO);
+			if(size(DListtmp) == 1){
+				BO[1] = BO[1]+ tmpBO[2];
+				BO[2] = delete(BO[2],j);
+				DList = DeltaList(BO);
+			}
+		}
+	}
+		
+	if(size(BO[2]) == 0){
+		
+	}
+	return(BO,DList);
+}
+
+
+proc DescendInDimension(list BO, int chartnumber) 
 "USAGE: DescendInDimension(list BO); calculates the coefficient ideals; apply induction on dimension 
 RETURN: a list basic objects corresponding to the different coefficient ideals and an intvec b with the values of the correspoding orders 
 EXAMPLE: example DescendInDimension; shows an example
 "{
 	int j,k;
 	list CoeffBOList;
-	CoeffBOList[1] = BO;
-	list BOtmp = BO;
+	list tmpBOlist = updateAmbientSpace(BO);
+	list BOtmp = tmpBOlist[1];
 	intvec b_old = BO[3];	
-	list DList = DeltaList(BOtmp);
+	list DList = tmpBOlist[2];
 	int btmp = size(DList);
 	ideal center = DList[btmp];
+	BOtmp[3][1] = btmp;
+	CoeffBOList[1] = BOtmp;
 	intvec b;
 	b[1] = btmp;	
 	int counter = 1;
@@ -122,7 +150,9 @@ EXAMPLE: example DescendInDimension; shows an example
 	
 	BOtmp[7] = BO7new;
 	list E = inters_E(BOtmp);
+	//if (chartnumber == 7){~;}
 	CoeffBOList[1][2] = mstd(E[1]^b[1] + CoeffBOList[1][2])[2];
+	BOtmp[2] = CoeffBOList[1][2];
 	center = std(DList[btmp]+E[1]);
 	
 	list CoeffList;
@@ -133,6 +163,7 @@ EXAMPLE: example DescendInDimension; shows an example
 	
 	while(descend_finished(center, btmp, CoeffBOList[size(CoeffBOList)]) == 0){	
 		counter++;	
+		
 		CoeffList = Coeff(BOtmp,b[size(b)]);
 		BOtmp = CoeffList[1];
 		Icontrol = CoeffList[2];
@@ -145,7 +176,7 @@ EXAMPLE: example DescendInDimension; shows an example
 		
 		if(casenumber == 2){
 			//Intersection of basic objects (W,(\overline{J},b'),E) \cap (W,(J,b),E) =  (W,(\overline{J}^b+J^{b'},bb'),E) 
-			BOtmp[2] = BOtmp[2]^BOcontrol[3] + BOcontrol[2] ^b[size(b)];
+			BOtmp[2] = mstd(BOtmp[2]^BOcontrol[3] + BOcontrol[2] ^b[size(b)])[2];
 			BOtmp[3] = b[size(b)] * BOcontrol[3];	//superfluent?
 		}
 
@@ -155,6 +186,7 @@ EXAMPLE: example DescendInDimension; shows an example
 		DList = DeltaList(BOtmp);
 		btmp = size(DList);		
 		b[size(b)+1]  = btmp;
+		CoeffBOList[counter][3][counter] = btmp;
 		//BO7 auf jeder Stufe hinzufügen für inters_E
 		if(orderdecreased == 0 and (size(b_old) >= counter)){ 
 			if(b[counter] == b_old[counter]){
@@ -176,6 +208,7 @@ EXAMPLE: example DescendInDimension; shows an example
 		if(casenumber == 1 or casenumber == 2){	
 			E = inters_E(BOtmp);
 			CoeffBOList[counter][2] = mstd(E[1]^b[counter] + CoeffBOList[counter][2])[2];
+			BOtmp[2] = CoeffBOList[counter][2];
 			center = std(DList[btmp]+E[1]);
 		}
 		if(casenumber == 3){
@@ -187,6 +220,8 @@ EXAMPLE: example DescendInDimension; shows an example
 			//center = std(center + E[1]);
 		}
 	}
+	
+	center = std(radical(center));
 	if(EqualityOfIdeal(center, BO[2])){					//Reicht das als Abbruchkriterium???
 		center = 1;
 	}
@@ -196,13 +231,18 @@ EXAMPLE: example DescendInDimension; shows an example
 		CoeffBOList[j][7] = intvec(BO7new[j..size(BO7new)]);
 	}
 	for(j=1;j<=size(b);j++){
-		for(k=1;k<=size(b);k++){	
-			CoeffBOList[j][3][k] = b[k];
-		}
+		CoeffBOList[j][3] = b;
+//		for(k=1;k<=size(b);k++){	
+//			CoeffBOList[j][3][k] = b[k];
+//		}
 	}
 
 	return(CoeffBOList,b,center,Icontrol,Iweak);						
 }
+
+
+
+
 
 proc descend_finished(ideal ctemp, int btmp, list CoeffBO) 
 "USAGE: descend_finished(list CoeffBO); requires the last coefficient basic object as input 
@@ -219,6 +259,10 @@ EXAMPLE: example descend_finished; shows an example
 	}
 	if(isSmooth(ctemp) == 1  && normalCross(ctemp,CoeffBO[4]) == 1){		//isSmooth passt noch nicht!!!	// isSmooth(C) and snc(C,E);
 		return(4);
+	}
+	ctemp = std(radical(ctemp));
+	if(isSmooth(ctemp) == 1  && normalCross(ctemp,CoeffBO[4]) == 1){
+		return(5);
 	}
 	return(0);												// not finished
 }

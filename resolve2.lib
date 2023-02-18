@@ -3479,7 +3479,9 @@ static proc goodChoice(list BO, poly p)
 //--------------------------------------------------------------------------
    for(i=1;i<=size(E);i++)
    {
-      E[i]=E[i],p;
+	  if( size(reduce(p,std(E[i]),5))!=0){
+		E[i]=E[i],p;
+	}
    }
    if(normalCross(E))
    {
