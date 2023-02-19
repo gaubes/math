@@ -1,0 +1,1 @@
+ Ideal: -x2y2+z2	endcharts: 5	charts: 3	running time: 0

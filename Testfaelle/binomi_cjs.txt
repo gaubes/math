@@ -1,0 +1,142 @@
+Chartnumber: 1
+transform IZ: 0 
+transform IX: x2y2-z2w2 
+descending IZ: 0 
+Center: w,z,y,x 
+lastmap: x,y,z,w 
+totalmap: x,y,z,w 
+path:
+0,
+-1
+tower: w,z,y,x,0 
+invariant: 4,0 
+MaxIX-locus: w,z,y,x,0
+
+Chartnumber: 2
+transform IZ: 0 
+transform IX: y(2)^2*y(3)^2-y(1)^2 
+descending IZ: 0 
+boundarylist: x(4),-2 
+Center: y(3),y(1) 
+image of center: x(4),x(4)*y(1),x(4)*y(2),x(4)*y(3) 
+lastmap: x(4)*y(3),x(4)*y(2),x(4)*y(1),x(4) 
+totalmap: x(4)*y(3),x(4)*y(2),x(4)*y(1),x(4) 
+path:
+0, 1,
+-1,1 
+tower: y(3),y(1),0,y(2),y(1),0 
+invariant: 2,0 
+MaxIX-locus: y(3),y(1),0,y(2),y(1),0
+
+Chartnumber: 3
+transform IZ: 0 
+transform IX: y(2)^2*y(3)^2-y(0)^2 
+descending IZ: 0 
+boundarylist: x(3),-2 
+Center: y(3),y(0) 
+image of center: x(3)*y(0),x(3),x(3)*y(2),x(3)*y(3) 
+lastmap: x(3)*y(3),x(3)*y(2),x(3),x(3)*y(0) 
+totalmap: x(3)*y(3),x(3)*y(2),x(3),x(3)*y(0) 
+path:
+0, 1,
+-1,2 
+tower: y(3),y(0),0,y(2),y(0),0 
+invariant: 2,0 
+MaxIX-locus: y(3),y(0),0,y(2),y(0),0
+
+Chartnumber: 4
+transform IZ: 0 
+transform IX: y(0)^2*y(1)^2-y(3)^2 
+descending IZ: 0 
+boundarylist: x(2),-2 
+Center: y(3),y(1) 
+image of center: x(2)*y(0),x(2)*y(1),x(2),x(2)*y(3) 
+lastmap: x(2)*y(3),x(2),x(2)*y(1),x(2)*y(0) 
+totalmap: x(2)*y(3),x(2),x(2)*y(1),x(2)*y(0) 
+path:
+0, 1,
+-1,3 
+tower: y(3),y(1),0,y(3),y(0),0 
+invariant: 2,0 
+MaxIX-locus: y(3),y(1),0,y(3),y(0),0
+
+Chartnumber: 5
+transform IZ: 0 
+transform IX: y(0)^2*y(1)^2-y(2)^2 
+descending IZ: 0 
+boundarylist: x(1),-2 
+Center: y(2),y(1) 
+image of center: x(1)*y(0),x(1)*y(1),x(1)*y(2),x(1) 
+lastmap: x(1),x(1)*y(2),x(1)*y(1),x(1)*y(0) 
+totalmap: x(1),x(1)*y(2),x(1)*y(1),x(1)*y(0) 
+path:
+0, 1,
+-1,4 
+tower: y(2),y(1),0,y(2),y(0),0 
+invariant: 2,0 
+MaxIX-locus: y(2),y(1),0,y(2),y(0),0
+
+Chartnumber: 6
+transform IZ: 0 
+transform IX: x(3)^2-y(1)^2 
+descending IZ: 0 
+boundarylist: x(1),x(4),-1,2 
+Center: y(1),x(3) 
+image of center: x(4),x(4)*y(1) 
+lastmap: x(1),x(4)*y(1),x(3),x(4) 
+totalmap: x(1)*x(4),x(1)*x(3),x(1)*x(4)*y(1),x(1) 
+path:
+0, 1,2,
+-1,1,1 
+tower: y(1),x(3),0 
+invariant: 2,0 
+MaxIX-locus: y(1),x(3),0
+
+Chartnumber: 8
+transform IZ: 0 
+transform IX: x(3)^2-y(1)^2 
+descending IZ: 0 
+boundarylist: x(1),x(4),-1,2 
+Center: y(1),x(3) 
+image of center: x(4),x(4)*y(1) 
+lastmap: x(1),x(4)*y(1),x(3),x(4) 
+totalmap: x(1)*x(4),x(1)*x(3),x(1),x(1)*x(4)*y(1) 
+path:
+0, 1,3,
+-1,2,1 
+tower: y(1),x(3),0 
+invariant: 2,0 
+MaxIX-locus: y(1),x(3),0
+
+Chartnumber: 11
+transform IZ: 0 
+transform IX: x(2)^2-y(0)^2 
+descending IZ: 0 
+boundarylist: x(1),x(3),-1,2 
+Center: y(0),x(2) 
+image of center: x(3)*y(0),x(3) 
+lastmap: x(1),x(2),x(3),x(3)*y(0) 
+totalmap: x(1)*x(3)*y(0),x(1),x(1)*x(3),x(1)*x(2) 
+path:
+0, 1,4,
+-1,3,2 
+tower: y(0),x(2),0 
+invariant: 2,0 
+MaxIX-locus: y(0),x(2),0
+
+Chartnumber: 13
+transform IZ: 0 
+transform IX: x(2)^2-y(0)^2 
+descending IZ: 0 
+boundarylist: x(1),x(3),-1,2 
+Center: y(0),x(2) 
+image of center: x(3)*y(0),x(3) 
+lastmap: x(1),x(2),x(3),x(3)*y(0) 
+totalmap: x(1),x(1)*x(3)*y(0),x(1)*x(3),x(1)*x(2) 
+path:
+0, 1,5,
+-1,4,2 
+tower: y(0),x(2),0 
+invariant: 2,0 
+MaxIX-locus: y(0),x(2),0
+

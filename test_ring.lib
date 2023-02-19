@@ -555,43 +555,43 @@ EXAMPLE : binomial_cjs; shows an example
 	boundary = towerRetList[3];
 	L = L + CopiesOfCharts(1,mode); 			//automatically blownup
 		
-		fprintf(l1,"Chartnumber: %s",1);
-		fprintf(l1,"transform IZ: %s ",IZ);
-		fprintf(l1,"transform IX: %s ",mstd(IX)[2]);
+		//fprintf(l1,"Chartnumber: %s",1);
+		//fprintf(l1,"transform IZ: %s ",IZ);
+		//fprintf(l1,"transform IX: %s ",mstd(IX)[2]);
 		//fprintf(l1,"transform IX: %s ",IX);
 		
-		fprintf(l1,"descending IZ: %s ",descended_IZ);
+		//fprintf(l1,"descending IZ: %s ",descended_IZ);
 		if(defined(boundary)){
-			fprintf(l1,"boundarylist: %s ",boundary);
+			//fprintf(l1,"boundarylist: %s ",boundary);
 		}
 		if(defined(Center_of_this_chart)){
-			fprintf(l1,"Center: %s ",Center_of_this_chart);
+			//fprintf(l1,"Center: %s ",Center_of_this_chart);
 		}
 		if(defined(Centerideal)){
-			fprintf(l1,"image of center: %s ",Centerideal);
+			//fprintf(l1,"image of center: %s ",Centerideal);
 		}
-		fprintf(l1,"lastmap: %s ",last_map);
-		fprintf(l1,"totalmap: %s ",total_map);
-		fprintf(l1,"path:");
-		fprintf(l1,"%p",matrix(path));
+		//fprintf(l1,"lastmap: %s ",last_map);
+		//fprintf(l1,"totalmap: %s ",total_map);
+		//fprintf(l1,"path:");
+		//fprintf(l1,"%p",matrix(path));
 		if(defined(tower)){
 			if(size(tower)>0){
-				fprintf(l1,"tower: %s ",string(tower));
+			//	fprintf(l1,"tower: %s ",string(tower));
 			}
 		}
 		if(defined(MaxIX)){
-			fprintf(l1,"invariant: %s ",string(MaxIX[1]));
-			fprintf(l1,"MaxIX-locus: %s", string(MaxIX[2]));
+			//fprintf(l1,"invariant: %s ",string(MaxIX[1]));
+			//fprintf(l1,"MaxIX-locus: %s", string(MaxIX[2]));
 		}
-		fprintf(l1,"");
+		//fprintf(l1,"");
 	for(i = 2; i <= size(L);i++){									// CJS in every chart, loop of all charts
 		
 		if(defined(actual_chart)){kill actual_chart;} 
 		def actual_chart = L[i];
 		setring(actual_chart);
 
-		sprintf("Chart:%s of %s",i,size(L));
-		show_actual_chart();
+		//sprintf("Chart:%s of %s",i,size(L));
+		//show_actual_chart();
 		//if( i == 25 or i == 35){~;}
 		
 		if(EqualityOfIdeal(IX,1) == 1){								//obviously an endchart 			
@@ -841,44 +841,44 @@ EXAMPLE : binomial_cjs; shows an example
 				L = L + CopiesOfCharts(i,mode);						
 			}
 		}
-		if(i == 2 or i == 6 or i ==13 or i ==19 or i == 25 or i == 35){~;}
-		fprintf(l1,"Chartnumber: %s",i);
-		fprintf(l1,"transform IZ: %s ",IZ);
-		fprintf(l1,"transform IX: %s ",mstd(IX)[2]);
+		//if(i == 2 or i == 6 or i ==13 or i ==19 or i == 25 or i == 35){~;}
+		//fprintf(l1,"Chartnumber: %s",i);
+		//fprintf(l1,"transform IZ: %s ",IZ);
+		//fprintf(l1,"transform IX: %s ",mstd(IX)[2]);
 		//fprintf(l1,"transform IX: %s ",IX);
 		
-		fprintf(l1,"descending IZ: %s ",descended_IZ);
+		//fprintf(l1,"descending IZ: %s ",descended_IZ);
 		if(defined(boundary)){
-			fprintf(l1,"boundarylist: %s ",boundary);list oldcomps;
+			//fprintf(l1,"boundarylist: %s ",boundary);list oldcomps;
 			if(size(boundary)>1){
 				for(j=1; j<=size(boundary[2]);j++){
 					if(boundary[2][j] < 0){
 					oldcomps = oldcomps +list(boundary[1][j]);	
 					}
 				}
-				fprintf(l1,"old components: %s ",string(oldcomps));
+				//fprintf(l1,"old components: %s ",string(oldcomps));
 			}
 		}
 		if(defined(Center_of_this_chart)){
-			fprintf(l1,"Center: %s ",Center_of_this_chart);
+			//fprintf(l1,"Center: %s ",Center_of_this_chart);
 		}
 		if(defined(Centerideal)){
-			fprintf(l1,"image of center: %s ",Centerideal);
+			//fprintf(l1,"image of center: %s ",Centerideal);
 		}
-		fprintf(l1,"lastmap: %s ",last_map);
-		fprintf(l1,"totalmap: %s ",total_map);
-		fprintf(l1,"path:");
-		fprintf(l1,"%p",matrix(path));
+		//fprintf(l1,"lastmap: %s ",last_map);
+		//fprintf(l1,"totalmap: %s ",total_map);
+		//fprintf(l1,"path:");
+		//fprintf(l1,"%p",matrix(path));
 		if(defined(tower)){
 			if(size(tower)>0){
-				fprintf(l1,"tower: %s ",string(tower));
+			//	fprintf(l1,"tower: %s ",string(tower));
 			}
 		}
 		if(defined(MaxIX)){
-			fprintf(l1,"invariant: %s ",string(MaxIX[1]));
-			fprintf(l1,"MaxIX-locus: %s", string(MaxIX[2]));
+			//fprintf(l1,"invariant: %s ",string(MaxIX[1]));
+			//fprintf(l1,"MaxIX-locus: %s", string(MaxIX[2]));
 		}
-		fprintf(l1,"");
+		//fprintf(l1,"");
 		
 		kill(actual_chart);
 		
@@ -890,7 +890,7 @@ EXAMPLE : binomial_cjs; shows an example
 	}
 			
 	setring(r);
-	ResTreeCJS(L);
+	//ResTreeCJS(L);
 	return(list(L, EndCharts, rtimer-runtime));
 }
 
@@ -1874,7 +1874,7 @@ EXAMPLE: example MaxOrdArithO; shows an example
 				list MaxOrdRetList = #[2];
 			}	
 		}
-		if (chartnumber == 35){~;}	
+		//if (chartnumber == 35){~;}	
 	}
 	
 	IX = std(IX);
