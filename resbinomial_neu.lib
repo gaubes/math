@@ -48,15 +48,15 @@ EXAMPLE: example resbinomial2; shows an example
 		EndCharts[1] = BlowUpTree[1];
 	}else{
 		BlowUpTree = BlowUpTree + SuccessorsCharts(descend_BOlist[1], center, 1);
-		center;
+		//center;
 	}
 	for(i=2; i<= size(BlowUpTree); i++){
-		print(i);
+		//print(i);
 		if(defined(actual_chart)){kill actual_chart;} 
 		def actual_chart = BlowUpTree[i];
 		setring(actual_chart);
-		print(path);
-		BO;
+		//print(path);
+		//BO;
 		if(isSmooth(BO[2]) == 1){
 			ideal center = 1;		//finished
 		}else{	
@@ -69,12 +69,12 @@ EXAMPLE: example resbinomial2; shows an example
 		
 			//print("center:");
 			
-			descend;
-			print(center);
+			//descend;
+			//print(center);
 			//if(i==11  or i == 7 or i == 3){~;}
 			
 		}
-		print(path);
+		//print(path);
 		if(EqualityOfIdeal(center,1) == 1){								//Reicht das als abbruch Bedingung?
 			EndCharts[size(EndCharts)+1] = BlowUpTree[i];
 		}else{
@@ -382,12 +382,12 @@ proc monomialCase(list BO, list DList){				//requires that DList.last is generat
 			center[j] = var(j);
 		}
 	}
-	print("vorher");
-	center;
+	//print("vorher");
+	//center;
 	//add ambient space to center
 	center = center + BO[1];
-	print("nachher");
-	center;	
+	//print("nachher");
+	//center;	
 	
 	return(center);
 }

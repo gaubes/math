@@ -40,6 +40,7 @@ PROCEDURES:
 
 LIB "matrix.lib";
 LIB "resolve.lib";
+LIB "hualgorithm.lib";
 LIB "general.lib";	//absValue
 
 LIB "resbinomial_neu.lib"; //only for performancetests
@@ -147,53 +148,49 @@ example
 //TODO
 //BO killen wenn final chart für binresolve
 //centerlist killen, wenn leer 
+//TODO: erkenne wenn r-minoren aufgelöst sind!
 proc determinantal_resolve(matrix M, int r){
+	if(r > min(nrows(M), ncols(M))){
+		ERROR("There are no r-minors in M");
+	}
 	
+	list datalist = createDatalist(M,r);	
+	//ideal minorideal = minor(M,r);
 	
-	ideal minorideal = minor(M,r);
-	list minorsize = list(min(ncols(M),nrows(M)),var(1) );				//  variable and list is only technically in order that we can store the list in the ring!!!
-	export(minorideal);
-	export(minorsize);
 	module path = [0,-1];												//path of the current chart, autoconverted to matrix
 	export(path);
-	
-	ideal W = ideal(0);													//ambient space; Maybe change this later
-	export(W);
-	list E = list();													// list of exceptional divisors
-	export(E);
-	ideal abb=maxideal(1);
-	export(abb);
 	
 	list BlowUpTree;
 	BlowUpTree[1] = basering;
 	list EndCharts;
 	
-	string status;
+	string stat = datalist[3][1];
+	ideal cent;
+	export(cent);
 	//------------------------------------------------------------------
-	status = calculate_process_of_center_calculation(M);
 	//TODO 
 	//init data structure depending on the status
-	while(status == "gauss"){			//the only status without centers. Can obtain more than once in a row 
+	while(stat == "gauss"){			//the only status without centers. Can obtain more than once in a row 
 		M = generic_gauss(M, nrows(M), ncols(M));
-		status = calculate_process_of_center_calculation(M);
+		stat = calculate_process_of_center_calculation(M);
 	}
-	if(status == "binresol"){
+	if(stat == "binresol"){
 		//create list of binomials
 		list binomiallist = GenerateListOfBinomials(M);
 		//init  BO in the data type of resbinomial2
 		ideal J = binomiallist[1];
 		list BO = createBO(J);
 	}
-	if(status == "Hu"){
-		//we get a list of centers like in the CJS setting
+	if(stat == "Hu"){
+		//we get a list of centers
 		list centerlist = HuAlgorithm(M);
 		//first centers are the centers on level????
 		//TODO Optimation: Only add necessary centers to centerlist
 	}
-	if(status == "transformation"){
-		//TODO: Ueberdeckung wie bei maxord algorithmus basteln und neue karten dann hinzufügen
+	if(stat == "transformation"){
+		cent = 0;		//dummy value; in order to identify it in the blow up method. In there we calculate the covering.
 	}
-	if(status == "monomial"){
+	if(stat == "monomial"){
 		ideal J = CreateBinomialFromMonomialMatrix(M);
 		list BO = createBO(J);
 	}
@@ -202,46 +199,40 @@ proc determinantal_resolve(matrix M, int r){
 		return(resbinomial2(minor(M,1)));			//resolve ideal of the (binomial) entries of M
 	}
 	
+	datalist[3][1] = stat;
 	//compute the center
 	//IMPORTANT: ONLY centerlist OR BO should be defined!!!
 	// DELETE BO in final charts of resbinomial2
 	//centerlist in HU should be automatically deleted
-	ideal cent;
+
 	if(defined(BO)){
 		cent = calculate_center(BO,"BO");	
 	}
 	if(defined(centerlist)){
 		cent = calculate_center(centerlist,"Hu");	//TODO later delete superfluent entries in centerlist
 	}
-	export(cent);
+
 	BlowUpTree = BlowUpTree +  CopyDataInNextChartsAndBlowUp(M,cent,1);
 	
-	int i; int j; int k;
-	
+	int i,j,k;	
 	int number_cols, number_rows;
 	int mindim;
 	int chart_counter = size(BlowUpTree);
 	
-	int oldsize;
-	//TODO: Alle daten einer Karte in eine Liste packen, auch das Zentrum und das BO. Dann kann man immer nur die uebergeben
+	int oldsize;	//maybe usefull for optimizations, when checking whether we reach r-minors as entries
+
 	for(i = 2; i<= size(BlowUpTree);i++){			
-		if(defined(XijChart)){
-			kill(XijChart);
+		if(defined(Chart)){
+			kill(Chart);
 		}
-		def XijChart = BlowUpTree[i];
-		setring(XijChart);
+		def Chart = BlowUpTree[i];
+		setring(Chart);
 
 		number_cols = ncols(N);
 		number_rows = nrows(N);
-		
-		//compute in which stadium we are
-		// if simultaneously locally monomial ... calculate a covering and a system of parameters like in the general case 
-		// if gauss do generic gauss  
-		ideal minorideal = transformationlist[2];		//???
-		export(minorideal); 
 		mindim = min(ncols(M),nrows(M));
 					
-		//TODO:
+		//if we are in the middle of a resolve or a HU resolution, shorten the process and going on!
 		if(defined(BO) or defined(centerlist)){
 			if(defined(BO)){
 				ideal cent = compute_center(BO,"BO");
@@ -250,56 +241,52 @@ proc determinantal_resolve(matrix M, int r){
 				ideal cent = compute_center(centerlist,"Hu");
 			}
 			export(center);
-		}else{
-			status = calculate_process_of_center_calculation(M);
-			while(status == "gauss"){			//the only status without centers. Can obtain more than once in a row 
+		}else{	//new status have to start
+			stat = calculate_process_of_center_calculation(M);
+			ideal cent;
+			export(cent);
+			while(stat == "gauss"){			//the only status without centers. Can obtain more than once in a row 
 				M = generic_gauss(M, nrows(M), ncols(M));
-				status = calculate_process_of_center_calculation(M);
+				stat = calculate_process_of_center_calculation(M);
 			}
 			//init data structure depending on the status
-			if(status == "binresol"){
+			if(stat == "binresol"){
 				//create list of binomials
-				if(!defined(BO)){
-					list binomiallist = GenerateListOfBinomials(M);
-					//init  BO in the data type of resbinomial2
-					ideal J = binomiallist[1];
-					list BO = createBO(J);
-					ideal cent = compute_center(BO,"BO");
-					export(cent);
-					//vermutlich nur die liste updaten? oder neu berechnen?!?
-				} 
+				list binomiallist = GenerateListOfBinomials(M);
+				//init  BO in the data type of resbinomial2
+				ideal J = binomiallist[1];
+				list BO = createBO(J);
+				cent = compute_center(BO,"BO");
+				//vermutlich liste neu berechnen?!?
 			}
-			if(status == "Hu"){
-				if(!defined(centerlist)){
-					list centerlist = HuAlgorithm(M);
-					ideal cent = compute_center(BO,"Hu");
-					export(cent);		
-				}//first centers are the centers on level????
-				//TODO Optimation: Only add necessary centers to centerlist
+			if(stat == "Hu"){
+				list centerlist = HuAlgorithm(M);
+				cent = compute_center(BO,"Hu");		
+			}//first centers are the centers on level????
+			//TODO Optimation: Only add necessary centers to centerlist
 			}
-			if(status == "transformation"){
-				//TODO: Ueberdeckung wie bei maxord algorithmus basteln und neue karten dann hinzufügen
-				//Keine Aufblasung im eigentlichen Sinn
+			if(stat == "transformation"){
+				cent = 0; //No blow up but the covering generates new charts 
 			}
-			if(status == "monomial"){
-				if(!defined(BO)){
-					ideal J = CreateBinomialFromMonomialMatrix(M);
-					list BO = createBO(J);
-					ideal cent = compute_center(BO,"BO");
-					export(cent);
-				}//sonst weiter auflösen
+			if(stat == "monomial"){
+				ideal J = CreateBinomialFromMonomialMatrix(M);
+				list BO = createBO(J);
+				cent = compute_center(BO,"BO");
 			}
 		
 			if(min(ncols(M),nrows(M)) == 1){	// binomial ideal -> resbinomial2
-				if(!defined(BO)){
-					list BO = createBO(minor(M,1));
-				}
+				list BO = createBO(minor(M,1));
 				ideal cent = calculate_center(BO);
 				export(cent);
 			}
 		}
-		if(EqualityOfIdeal(cent,1) == 0 ){		
-			BlowUpTree = BlowUpTree + CopyDataInNextChartsAndBlowUp(M,cent,i);	//TODO: convert necessary data to a list
+		if(EqualityOfIdeal(cent,1) == 0 ){
+			//TODO: pruefe ob r-minoren resolved sind
+			if(rMinorsResolved(datalist) == 0){		
+				BlowUpTree = BlowUpTree + CopyDataInNextChartsAndBlowUp(datalist,cent,i);	
+			}else{
+				EndCharts[size(EndCharts)+1] = BlowUpTree[i];
+			}
 		}else{
 			EndCharts[size(EndCharts)+1] = BlowUpTree[i];
 		}
@@ -307,23 +294,55 @@ proc determinantal_resolve(matrix M, int r){
 
 	//------------------------------------------------------------------
 	return(EndCharts,BlowUpTree);
+}example{
+	ring r = 0,(x(1..4)),dp;
+	matrix M = genericmat(2,2);
+	determinantal_resolve(M,2);
 }
 //----------------------------------------------------------------------
 
-proc calculate_center(list L, string status){
+proc createDatalist(matrix M, int r ){
+	list minorsize = list(r,var(1));			//  variable and list is only technically in order that we can store the list in the ring!!!
+
+	list datalist = list();
+	datalist[1] = ideal(0);
+	datalist[2] = M;
+	datalist[3] = list(calculate_process_of_center_calculation(M),minorsize);
+	datalist[4] = list();
+	ideal abb = maxideal(1);
+	datalist[5] = abb;
+	datalist[6] = list();
+	return(datalist);
+}
+
+
+//TODO
+proc rMinorsResolved(list datalist){
+	int r = datalist[3][2][1];
+	ideal minorideal = minor(datalist[2],r);
+	
+	return(isSmooth(minorideal));	
+}
+
+//----------------------------------------------------------------------
+proc calculate_center(list L, int chartnumber, string stat){
 	//L should be the centerlist or a basic object
 	// status says if we have a BO or a centerlist
 	ideal center;
-	if(status == "Hu"){
+	if(stat == "Hu"){
 		//TODO: in welcher Reihenfolge stehen die Zentren bei HU ?
 		
 	}
-	if(status == "BO"){
-		calculate_centerBO(L); // TODO rename as in resbinomial_neu!!!
+	if(stat == "BO"){
+		calculate_centerBO(L, chartnumber); 
 	}
 	return(center);
 }
-
+//dummy function for later improvements and more flexibility
+//TODO: Implement more other methods and add a tag which chooses the right one!
+proc calculate_centerBO(list L, int chartnumber){
+	return(DescendInDimension(L,chartnumber));
+}
 
 //----------------------------------------------------------------------
 proc calculate_process_of_center_calculation(matrix M)
@@ -331,35 +350,23 @@ proc calculate_process_of_center_calculation(matrix M)
 RETURN: a string which encodes the status of the resolution process
 EXAMPLE: example calculate_process_of_center_calculation; shows an example
 "
-{
-	int i,j,k;
-	
-	int number_cols = ncols(M);
-	int number_rows = nrows(M);
-	
-	string mode;
-	
+{	
 	if(isLocallyMonomial(M) == 0){
-		mode = "binresol";
-		return(mode);
+		return("binresol");
 	}
 	if(isLocallyMonomial(M) == 1 and isSimultaneouslyLocallyMonomial(M) == 0){
-		mode = "Hu";
-		return(mode);
+		return("Hu");
 	}
 	if(isSimultaneouslyLocallyMonomial(M) and isMonomial(M) == 0){
-		mode = "transformation";
-		return(mode);
+		return("transformation");
 	}
 	if(isMonomial(M) == 1 and isresolvedMonomial(M) == 0){ 
-		mode = "monomial";
-		return(mode);
+		return("monomial");
 	}
 	if(isresolvedMonomial(M) == 1){
-		mode = "gauss";
-		return(mode);
+		return("gauss");
 	}
-	return(mode);
+	return("");
 }
 
 //----------------------------------------------------------------------
@@ -368,7 +375,7 @@ proc isLocallyMonomial(matrix M)
 RETURN: 1 if the entries of M are locally monomial, 0 if there is an entry which is not locally monomial
 EXAMPLE: example isLocallyMonomial; shows an example
 "
-{ // only 1-x^A equations allowed
+{ // only 1-x^A equations allowed //TODO: ausfaktorisieren, da y(1-x^A) vorkommen kann
 	int i,j,k;
 	int LocallyMonomial = 1;
 	int number_cols = ncols(M);
@@ -392,8 +399,10 @@ EXAMPLE: example isLocallyMonomial; shows an example
 	
 	matrix N[3][2] = x^2+y,y,z,xy,1-x^3*y,2x;
 	print(N);
-	isLocallyMonomial (N);
+	isLocallyMonomial(N);
 }
+
+
 //----------------------------------------------------------------------
 proc isSimultaneouslyLocallyMonomial(matrix M)
 "USAGE: isSimultaneouslyLocallyMonomial(matrix M); 
@@ -407,13 +416,15 @@ EXAMPLE: example isSimultaneouslyLocallyMonomial; shows an example
 }
 
 
+
 //----------------------------------------------------------------------
 proc isMonomial(matrix M)
 "USAGE: isMonomial(matrix M); 
 RETURN: 1 if the entries of M are monomial, 0 if there is an entry which is not monomial
 EXAMPLE: example isMonomial; shows an example
 "
-{ // only x^A equations allowed
+{
+	 // only x^A equations allowed
 	int i,j,k;
 	int Monomial = 1;
 	int number_cols = ncols(M);
@@ -437,6 +448,8 @@ EXAMPLE: example isMonomial; shows an example
 	print(N);
 	isMonomial (N);
 }
+
+
 //----------------------------------------------------------------------
 proc isresolvedMonomial(matrix M)
 "USAGE: isresolvedMonomial(matrix M); 
@@ -452,25 +465,23 @@ EXAMPLE: example isresolvedMonomial; shows an example
 	if(isMonomial(M) == 0){
 		Error("Not monomial Matrix");
 	}
-	for(i=1;i<=number_rows;i++){
-		for(j=1; j<= number_cols; j++){
-			if(size(M[i,j])==1){				// at least binomial
-				resolved = 1;
-			}
-		}
-	}				
+
+	ideal J = minor(M,1);					//Maybe ideal equals 1 but matrix has no 1-entry e.g. x and 1-x are in the ideal.... TODO create covering
+	resolved = EqualityOfIdeal(J,1);			
 	return(resolved);
 }example{
 	ring r =0, (x,y,z),dp;
 	matrix M[3][2] = x,y^3,z,xy,x*y*z,2x;
 	print(M);
-	isresolvedMonomial (M);
+	isresolvedMonomial(M);
 	
 	matrix N[3][2] = x^2,y,z,xy,1,2x;
 	print(N);
 	isresolvedMonomial (N);
 
 }
+
+
 //----------------------------------------------------------------------
 // auxiliary procedures for the binomial case
 //----------------------------------------------------------------------
@@ -564,14 +575,20 @@ EXAMPLE: example CopyDataInNextChartAndBlowUp; shows an example
 "
 {
 	int j, number_cols,number_rows;
-	int Edefined = 1;
 	def r = basering;
-	if(size(E) == 0){Edefined = 0;}
-	int BOdefined, centerlistdefined;
-	if(defined(BO)){BOdefined = 1;}
-	if(defined(centerlist)){centerlistdefined = 1;}
+	//int BOdefined, centerlistdefined;
+	//if(defined(BO)){BOdefined = 1;}
+	//if(defined(centerlist)){centerlistdefined = 1;}
+	//TODO: Differ center == 0 (only transformation) and center != 0 case
+	list successorList;
 	
-	list successorList = blowUp3(W,Center);
+	if(EqualityOfIdeal(Center,0) == 1){	//Transformation status
+		//TODO: generate a covering which are the next charts without a blow up!
+		
+		//successorList = Covering();.....
+	}else{	
+		successorList = blowUp3(W,Center);
+	}
 	int number_center_components = size(successorList);
 
 	for(j = 1;j<=number_center_components; j++){
@@ -1454,7 +1471,7 @@ proc test_skew(int m){
 
 proc binomial_test_generic_vs_resbinomial(int m){		//only 2-minors of generic jxj matrices for 2<=j<=m
 
-	link l3 = ":w Testfaelle/resbinomial.txt";
+	link l3 = ":w Testfaelle/resbinomial2.txt";
 	
 	link l2 = ":w Testfaelle/binomial_resolve.txt";
 	link l1 = ":w Testfaelle/binomial_generic_resolve.txt";
@@ -1486,7 +1503,7 @@ proc binomial_test_generic_vs_resbinomial(int m){		//only 2-minors of generic jx
 		fprintf(linklist[1]," Matrix: %s	minorsize: %s	endcharts: %s	charts: %s	running time: %s",M,minorsize,blowuplist[3],blowuplist[2], runningtime);	
 		
 		tmp_runningtime = rtimer;
-		blowuplist = BINresol(I);
+		blowuplist = resbinomial2(I);
 		runningtime = rtimer - tmp_runningtime;	
 		fprintf(linklist[3]," Matrix: %s	minorsize: %s	endcharts: %s	charts: %s	running time: %s", M,minorsize,size(blowuplist[1]),size(blowuplist[2]), runningtime);
 
