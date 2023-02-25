@@ -3060,7 +3060,7 @@ static proc DropRedundant(list BO,list E)
   return(retlist);
 }
 //////////////////////////////////////////////////////////////////////////////
-static proc transversalT(ideal J, list E,list #)
+proc transversalT(ideal J, list E,list #)
 "Internal procedure - no help and no example available
 "
 {

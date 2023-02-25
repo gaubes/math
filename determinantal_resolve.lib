@@ -39,9 +39,10 @@ PROCEDURES:
 ";
 
 LIB "matrix.lib";
-LIB "resolve.lib";
+//LIB "resolve.lib";
 LIB "hualgorithm.lib";
 LIB "general.lib";	//absValue
+LIB "test_ring.lib"; 			//covering calculation
 
 LIB "resbinomial_neu.lib"; //only for performancetests
 
@@ -155,7 +156,7 @@ proc determinantal_resolve(matrix M, int r){
 	}
 	
 	list datalist = createDatalist(M,r);	
-	//ideal minorideal = minor(M,r);
+	//ideal minorideal = minor(M,r);									// Zusätzlich prüfen ob 'fertig' ???
 	
 	module path = [0,-1];												//path of the current chart, autoconverted to matrix
 	export(path);
@@ -235,13 +236,21 @@ proc determinantal_resolve(matrix M, int r){
 		//if we are in the middle of a resolve or a HU resolution, shorten the process and going on!
 		if(defined(BO) or defined(centerlist)){
 			if(defined(BO)){
-				ideal cent = compute_center(BO,"BO");
+				ideal cent = compute_center();			//BO could be deleted if center equals 1; No center than
+				if(EqualityOfIdeal(cent,1) == 1){
+					kill(center);
+				}else{
+					export(cent);
+				}
 			}
 			if (defined(centerlist)){
-				ideal cent = compute_center(centerlist,"Hu");
+				ideal cent = compute_center();	//last center in list deletes centerlist but chooses a right center!!
+				export(cent);
+				//Optimierung: trotzdem prüfen ob bereits simmultaneously locally monomial!!!
 			}
-			export(center);
-		}else{	//new status have to start
+			
+		}
+		if(!defined(cent)){				//new status have to start; no center already choosen
 			stat = calculate_process_of_center_calculation(M);
 			ideal cent;
 			export(cent);
@@ -257,16 +266,16 @@ proc determinantal_resolve(matrix M, int r){
 				ideal J = binomiallist[1];
 				list BO = createBO(J);
 				cent = compute_center(BO,"BO");
-				//vermutlich liste neu berechnen?!?
 			}
 			if(stat == "Hu"){
 				list centerlist = HuAlgorithm(M);
 				cent = compute_center(BO,"Hu");		
-			}//first centers are the centers on level????
-			//TODO Optimation: Only add necessary centers to centerlist
 			}
+			//TODO Optimation: Only add necessary centers to centerlist
+			
 			if(stat == "transformation"){
 				cent = 0; //No blow up but the covering generates new charts 
+				// Only a dummy value
 			}
 			if(stat == "monomial"){
 				ideal J = CreateBinomialFromMonomialMatrix(M);
@@ -316,7 +325,7 @@ proc createDatalist(matrix M, int r ){
 }
 
 
-//TODO
+
 proc rMinorsResolved(list datalist){
 	int r = datalist[3][2][1];
 	ideal minorideal = minor(datalist[2],r);
@@ -325,16 +334,26 @@ proc rMinorsResolved(list datalist){
 }
 
 //----------------------------------------------------------------------
-proc calculate_center(list L, int chartnumber, string stat){
-	//L should be the centerlist or a basic object
-	// status says if we have a BO or a centerlist
+//TODO: Lists BO and centerlist have to be global!
+proc calculate_center(){
+
 	ideal center;
-	if(stat == "Hu"){
-		//TODO: in welcher Reihenfolge stehen die Zentren bei HU ?
-		
+	if(defined(centerlist)){
+		//assume: centerlist is not empty!
+		list tmplist = centerlist[1];
+		center = tmplist[1];
+		centerlist[1] = delete(tmplist,1);			//Always choose first entry of list and delete it
+		if(size(centerlist) == 0){
+			kill(centerlist);
+		}
 	}
-	if(stat == "BO"){
-		calculate_centerBO(L, chartnumber); 
+	if(defined(BO)){
+		list Descendlist = calculate_centerBO(BO, chartnumber);  
+		BO = Descendlist[1][1]; 	//Only the first BO needed
+		center = Descendlist[3];
+		if(EqualityOfIdeal(center,1) == 1){		//final chart in resolve.lib
+			kill(BO);													//TODO!!!! neuen status ermitteln und dann dadrin weitermachen
+		}
 	}
 	return(center);
 }
@@ -410,9 +429,20 @@ RETURN: 1 if the entries of M are simultaneously locally monomial, 0 if there is
 EXAMPLE: example isSimultaneouslyLocallyMonomial; shows an example
 "
 {
-	//TODO
-	//something with normalcrossings and transversal components...
-	return(0);
+	ideal I = minor(M,1);
+	std(I);
+	print(normalCross(I));
+	return(isLocallyMonomial(M) and normalCross(I));
+}example{
+	ring r =0, (x,y,z),dp;
+	matrix M[2][2] = 1-x,1-y,1-z,1;
+	print(M);
+	isSimultaneouslyLocallyMonomial (M);
+	
+	ring r2 =0, (x,y),dp;
+	matrix N[2][2] = 1-x,1-y,1-xy,1-xy;
+	print(N);
+	isSimultaneouslyLocallyMonomial(N);
 }
 
 
@@ -567,8 +597,8 @@ EXAMPLE: example CreateBinomialFromMonomialMatrix; shows an example
 		//TODO
 }
 //----------------------------------------------------------------------
-//TODO: Ueberarbeiten und datentyp liste für alle daten konstruieren
-proc CopyDataInNextChartsAndBlowUp_generic(matrix M, ideal Center, int chartnumber)
+//TODO: Ueberarbeiten; datentyp liste 
+proc CopyDataInNextChartsAndBlowUp_generic(list datalist, ideal Center, int chartnumber)
 "USAGE: CopyDataInNextChartAndBlowUp(matrix M, ideal Center, int chartnumber ); computes the blow up and copies the data (strict transform, ideal and pathmatrix) in the successorcharts
 RETURN: list of rings which represent the charts during the whole resolution process
 EXAMPLE: example CopyDataInNextChartAndBlowUp; shows an example
@@ -576,16 +606,17 @@ EXAMPLE: example CopyDataInNextChartAndBlowUp; shows an example
 {
 	int j, number_cols,number_rows;
 	def r = basering;
-	//int BOdefined, centerlistdefined;
-	//if(defined(BO)){BOdefined = 1;}
-	//if(defined(centerlist)){centerlistdefined = 1;}
+	int BOdefined, centerlistdefined;
+	if(defined(BO)){BOdefined = 1;}
+	if(defined(centerlist)){centerlistdefined = 1;}
+	matrix M = datalist[2];
 	//TODO: Differ center == 0 (only transformation) and center != 0 case
 	list successorList;
 	
 	if(EqualityOfIdeal(Center,0) == 1){	//Transformation status
 		//TODO: generate a covering which are the next charts without a blow up!
+		list covering = generateCovering(datalist);
 		
-		//successorList = Covering();.....
 	}else{	
 		successorList = blowUp3(W,Center);
 	}
@@ -637,6 +668,66 @@ EXAMPLE: example CopyDataInNextChartAndBlowUp; shows an example
 	ring r = 0,(x(1..12)),dp;
 	matrix M = genericmat(3,4);
 	CopyDataInNextChartsAndBlowUp(M,std(minor(M,1)),1);	
+}
+
+
+
+
+//TODO!!!
+proc generateCovering(list datalist){
+	//TODO
+	matrix M = datalist[2];
+	ideal I = generateListsimlocmon(M);
+	
+	
+	int CoDimI = Codimension(I);
+	//Berechnung der Menge L:
+	matrix JI = jacob(I);
+	list GeneratorList = GenerateL1(CoDimZ, J,I,0);
+	list L1 = GeneratorList[1];
+	list vectorsL1 = GeneratorList[2];
+  
+	ideal polynomialFi;
+	int s; poly detM; list y; int member;
+	matrix N;
+	//matrix A;
+	ideal Iold;
+		
+	for (member = 1; member <= size(L1); member++){ 	 //member stimmt mit i aus L und indices ueberein
+		N = L1[member];
+		detN = det(N);
+		if(detN != 0){									//only need calculations if detM != 0
+			y = SystemOfParameters( member, vectorsL1, CoDimI);  
+			s = size(y);
+			//Itemp = I;
+			//A = inverse_L(N)[1]; 				//A is matrix of cofactors of M
+			//TODO: I bzw. M mit neuen variablen darstellen
+			//TODO Ring basteln
+		}
+	}
+	
+	//TODO:
+	// generate ringlist and return it
+	return(L1);
+}
+
+
+//Requires a simloc matrix M
+proc generateListsimlocmon(matrix M){
+		//TODO
+		int i,j;
+		ideal I;
+		int maxcol = ncols(M);
+		int maxrow = nrows(M);
+		
+		for(i=1; i<=maxrow; i++){
+			for (j=1; j<=maxcol;j++){
+				if(M[i,j] != 0 and M[i,j]!= 1){
+					I[size(I)+1] = M[i,j];
+				}
+			}
+		}		
+		return(I);
 }
 
 
