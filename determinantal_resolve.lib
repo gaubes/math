@@ -269,7 +269,7 @@ proc determinantal_resolve(matrix M, int r){
 			}
 			if(stat == "Hu"){
 				list centerlist = HuAlgorithm(M);
-				cent = compute_center(BO,"Hu");		
+				cent = compute_center(centerlist,"Hu");		
 			}
 			//TODO Optimation: Only add necessary centers to centerlist
 			
@@ -340,11 +340,12 @@ proc calculate_center(){
 	ideal center;
 	if(defined(centerlist)){
 		//assume: centerlist is not empty!
-		list tmplist = centerlist[1];
-		center = tmplist[1];
-		centerlist[1] = delete(tmplist,1);			//Always choose first entry of list and delete it
+		list tmplist = centerlist[size(centerlist)];
+		center = tmplist[size(tmplist)];
+		centerlist[1] = delete(tmplist,size());			//Always choose LAST entry of list and delete it
 		if(size(centerlist) == 0){
 			kill(centerlist);
+			//TODO: Tag setzen, damit wir im nächsten Schritt sparen können Hu neu zu berechnen!!!
 		}
 	}
 	if(defined(BO)){
@@ -429,10 +430,14 @@ RETURN: 1 if the entries of M are simultaneously locally monomial, 0 if there is
 EXAMPLE: example isSimultaneouslyLocallyMonomial; shows an example
 "
 {
-	ideal I = minor(M,1);
-	std(I);
-	print(normalCross(I));
-	return(isLocallyMonomial(M) and normalCross(I));
+	if(isLocallyMonomial(M) == 0){
+		return(0);
+	}
+	list centerlist = HuAlgorithm(M);
+	if(size(centerlist) == 1){				//emptylist is the only entry
+		return(1);
+	}
+	return(0);
 }example{
 	ring r =0, (x,y,z),dp;
 	matrix M[2][2] = 1-x,1-y,1-z,1;

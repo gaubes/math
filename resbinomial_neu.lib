@@ -307,7 +307,7 @@ proc monomialCase(list BO, list DList){				//requires that DList.last is generat
 	for (j=1; j<= n;j++){
 		retListtmp[1][j] = Explist[1][j]; 
 	}
-
+//TODO: use removeDuplicates method of hualgorithm.lib 
 	if (SumList(retListtmp[1]) > b ){
 		for(l = 1; l<= n;l++){														//im schlimmsten fall n-mal ausnullen
 			for(k=1;k<=size(retListtmp);k++){										//in jeder Liste
