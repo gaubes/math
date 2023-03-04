@@ -148,7 +148,7 @@ example
 //----------------------------------------------------------------------
 //TODO
 //BO killen wenn final chart für binresolve ODER det monomial case -> 1 entry
-//centerlist killen, wenn leer 
+//centerlist nicht killen, wenn leer 
 //TODO: erkenne wenn r-minoren aufgelöst sind!
 proc determinantal_resolve(matrix M, int r){
 	if(r > min(nrows(M), ncols(M))){
@@ -677,7 +677,13 @@ EXAMPLE: example CopyDataInNextChartAndBlowUp; shows an example
 	def r = basering;
 	int BOdefined, centerlistdefined;
 	if(defined(BO)){BOdefined = 1;}
-	if(defined(centerlist)){centerlistdefined = 1;}
+	if(defined(centerlist)){
+		if(size(centerlist) >=1){
+			centerlistdefined = 1;
+		}else{
+			centerlistdefined = -1;		//empty list -> change status
+		}
+	}
 	
 	ideal W = datalist[1];
 	matrix M = datalist[2];
@@ -727,23 +733,24 @@ EXAMPLE: example CopyDataInNextChartAndBlowUp; shows an example
 			export(BO);
 		}
 		else{
-			if(centerlistdefined){
+			if(centerlistdefined == 1){
 				list centerlist = BlowUpMap(centerlist);
 				export(centerlist);
 			}
+			if(centerlistdefined == 1){
+				string stat = "transformation";
+			}
 		}
 		//Noch anderes mit übergeben?
-		//TODO: anpassen an datalist!!!!
-		//schauen wie BO in resolve.lib transformiert wird
 		//alles einzeln abbilden
 		//darauf achten, dass alles irgendwie ein ringelement hat
-		ideal abb = BlowUpMap(abb);					//abbildung aus resolve.lib //TODO: mit bM verknuepfen!!!!
+		ideal abb = BlowUpMap(abb);					//abbildung aus resbinomial2.lib //TODO: mit bM verknuepfen!!!!?
 		datalist[5] = abb;	
 		matrix N = BlowUpMap(M);				// total transform
 		matrix Ntmp = weakTransformOfMatrix(N);
 		datalist[2] = Ntmp;
-		number_cols = ncols(N);
-		number_rows = nrows(N);
+		//number_cols = ncols(N);
+		//number_rows = nrows(N);
 
 		def path = imap(r,path);				//init pathmatrix 
 		path=path,[chartnumber,j];
@@ -754,16 +761,35 @@ EXAMPLE: example CopyDataInNextChartAndBlowUp; shows an example
 		datalist[3][2] = minorsize();
 		list minorsize = datalist[3][2];
 		export(minorsize);
-
-		if(datalist[3][1] == ""){		//det monomial case
-			// update of status checks whether there is a 1 entry in the matrix
-			if(isresolvedMonomial(M)){
+		
+		
+		if(datalist[3][1] == "monomial"){
+			if(EqualityOfIdeal(minor(Ntmp,1), 1) == 1) {		//det monomial case is ready
+				//Pruefe auf 1-Eintrag; sonst überdecken!
 				kill(BO);
-				stat = "gauss";
-				//TODO: Minimize variables in the ring -> delete the added y-variables!!!
+				//ringvariablen minimieren! y-variablen werden nicht mehr benötigt
 			}
 		}
-		//TODO: aktuellen Status prüfen und ggf aktualisieren:
+		
+		
+		//HU is ready:
+		if(defined(stat)){
+			if(stat == "transformation"){
+				datalist[3][1] = stat;
+			}
+		}else{
+			datalist[3][1] =  calculate_process_of_center_calculation(Ntmp);
+		
+			if(datalist[3][1] == ""){		//det monomial case
+				// update of status checks whether there is a 1 entry in the matrix
+				if(isresolvedMonomial(M)){
+					kill(BO);
+					stat = "gauss";
+					//TODO: Minimize variables in the ring -> delete the added y-variables!!!
+				}
+			}
+			//TODO: aktuellen Status prüfen und ggf aktualisieren:
+		}
 		
 	}
 	return(successorList);
@@ -944,9 +970,6 @@ EXAMPLE: example generic_resolve; shows an example
 		ideal minorideal = transformationlist[2];
 		export(minorideal); 
 		mindim = min(ncols(M),nrows(M));
-					
-		list BOList = generate_BOList(M);
-		export(BOList);
 		
 		if(minorsize[1] > minsize){		//TODO!!! depends on the mode
 			oldsize = size(BlowUpTree);
@@ -1487,34 +1510,6 @@ EXAMPLE: example symmetric_transformation_of_variables; shows an example
 	//TODO	
 }
 
-proc generate_BOList(matrix M){
-	//BO[1] ambient space Wi
-	//BO[2] ideal defining the strict transform
-	//BO[3] invariant ???
-	//BO[4] exceptional divisors E
-	//BO[5] ideal defining K[W] --> K[Wi]
-	//BO[6] ???
-	//BO[7] ???
-	//BO[8] matrix ???
-	//BO[9] ???
-	//BO[10] center cannot split into connected components in the generic case!
-	
-	//auxiliary data:
-	//cent defining the center
-	//path module which describes the path matrix
-	//lastMap ideal describing the preceding blow up leading to this chart
-	list BO;
-	BO[1] = W;					
-	BO[2] = minor(M,minorsize);
-	
-	BO[4] = E;				//Todo: calculate list E of exceptional divisors 
-	BO[5] = abb;			// Todo: calculate ideal defining the map
-
-	return(BO);
-}
-//additional data in the determinantal case:
-// correspondence between sublist of polynomials and position of the corresponding entry in the matrix
- 
 //----------------------------------------------------------------------
 
 proc test_generic_vs_resolve(int m,int n){

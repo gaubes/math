@@ -13,7 +13,6 @@ PROCEDURES:
 	
 	SuccessorsCharts(list BO, ideal cent, int chartnumber); blow up method which fill the necessary data in the successor chart
 	
-	proc UpdateBO7(intvec new_b,intvec old_b,list BO);	update the information about the interesting exceptional divisors
 ";
 
 
@@ -504,44 +503,7 @@ EXAMPLE: example SuccessorsCharts; shows an example
 }
 
 
-//ueberfluessig!
-proc UpdateBO7(intvec b_new,intvec b_old,list BO){
-	int i,j;
-	// ersetze BO-list im Input durch den gesamten Abstieg? -> Dann ist hier auch klar, dass wir das originale BO in der Abstiegsliste brauchen
-	// auf jeder Stufe im Abstieg BO7 hinzufügen!
-	list E = BO[4]; // TODO!!!! wir brauchen eigentlich das 'richtige E' von position b_decrease_pos hier!!!!
 
-	
-	//finding position in b_new where the order drops
-	int b_decrease_pos; 
-	for(i=1;i<=size(b_new);i++){
-		if(b_new[i] < b_old){
-			b_decrease_pos = i;
-		}
-	}
-	//if b_new is shorter than b_old???
-	if(b_decrease_pos == 0){print("Ordnung ist nicht gefallen!"); ~;}
-	
-
-	intvec BO7 = BO[7];
-	intvec newBO7;
-	//copy first values of BO7 where the order is constant
-	for(i = 1; i<b_decrease_pos; i++){
-		newBO7[i] = BO7[i];
-	}
-	
-
-	//set BO[7][b_decrease_pos]
-	newBO7[b_decrease_pos] = size(E);
-	
-	//update last values of BO[7]
-	for(i = b_decrease_pos +1; i<= size(b_new);i++){
-		newBO7[i] = -1;
-	}	
-	
-	BO[7] = newBO7;
-	return(BO)
-}
 
 //little changes from the original one, since the data representation differs a little bit:
 proc ResTreeBinomial(list re, list #)
