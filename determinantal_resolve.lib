@@ -678,7 +678,14 @@ EXAMPLE: example CopyDataInNextChartAndBlowUp; shows an example
 	int BOdefined, centerlistdefined;
 	if(defined(BO)){BOdefined = 1;}
 	if(defined(centerlist)){centerlistdefined = 1;}
+	
+	ideal W = datalist[1];
 	matrix M = datalist[2];
+	string stat = datalist[3][1];					//Darauf achten, dass das auch immer gesetzt wird!
+	list minorsize = datalist[3][2];
+	list E = datalist[4];
+	ideal abb = datalist[5];
+	
 	//TODO: Differ center == 0 (only transformation) and center != 0 case
 	list successorList;
 	
@@ -689,7 +696,11 @@ EXAMPLE: example CopyDataInNextChartAndBlowUp; shows an example
 	}else{	
 		successorList = blowUp3(W,Center);
 	}
+	
 	int number_center_components = size(successorList);
+
+	
+
 
 	for(j = 1;j<=number_center_components; j++){
 		if(defined(newring)){kill newring;}
@@ -698,14 +709,21 @@ EXAMPLE: example CopyDataInNextChartAndBlowUp; shows an example
 		setring(newring);
 		map BlowUpMap = r,bM;		
 		ideal W = BlowUpMap(W);
-		export(W);
-		if(!Edefined){ list E = list();}
-		else{list E = BlowUpMap(E);}
+		//export(W);
+		list datalist = list();
+		export(datalist);
+		datalist[1] = W;
+		list E = BlowUpMap(E);
 		E[size(E)+1] = eD[1];
-		export(E);
+		datalist[4] = E;
 		
 		if(BOdefined){ 
-			list BO = BlowUpMap(BO);			//TODO funkioniert das hier so ? oder andere funktion aus resolve anwenden???
+			list BO;			//TODO funkioniert das hier so ? oder andere funktion aus resolve anwenden???
+			BO[1] = aS;
+			BO[2] = sT;
+			BO[4] = BlowUpMap(BO[4]);
+			BO[4][size(BO[4])+1] = eD;
+			BO[5] = bM;
 			export(BO);
 		}
 		else{
@@ -720,11 +738,10 @@ EXAMPLE: example CopyDataInNextChartAndBlowUp; shows an example
 		//alles einzeln abbilden
 		//darauf achten, dass alles irgendwie ein ringelement hat
 		ideal abb = BlowUpMap(abb);					//abbildung aus resolve.lib //TODO: mit bM verknuepfen!!!!
-		export(abb); 	
+		datalist[5] = abb;	
 		matrix N = BlowUpMap(M);				// total transform
-		export(N);
 		matrix Ntmp = weakTransformOfMatrix(N);
-		export(Ntmp);
+		datalist[2] = Ntmp;
 		number_cols = ncols(N);
 		number_rows = nrows(N);
 
@@ -732,17 +749,22 @@ EXAMPLE: example CopyDataInNextChartAndBlowUp; shows an example
 		path=path,[chartnumber,j];
 		export(path);
 		
-		list minorsize = BlowUpMap(minorsize);
+
+		datalist[3] = BlowUpMap(datalist[3]);
+		datalist[3][2] = minorsize();
+		list minorsize = datalist[3][2];
 		export(minorsize);
-		
+
 		if(datalist[3][1] == ""){		//det monomial case
 			// update of status checks whether there is a 1 entry in the matrix
 			if(isresolvedMonomial(M)){
 				kill(BO);
 				stat = "gauss";
-				//TODO: Minize variables in the ring -> delete the added y-variables!!!
+				//TODO: Minimize variables in the ring -> delete the added y-variables!!!
 			}
 		}
+		//TODO: aktuellen Status prüfen und ggf aktualisieren:
+		
 	}
 	return(successorList);
 }example{
