@@ -147,7 +147,7 @@ example
 }
 //----------------------------------------------------------------------
 //TODO
-//BO killen wenn final chart für binresolve
+//BO killen wenn final chart für binresolve ODER det monomial case -> 1 entry
 //centerlist killen, wenn leer 
 //TODO: erkenne wenn r-minoren aufgelöst sind!
 proc determinantal_resolve(matrix M, int r){
@@ -171,9 +171,12 @@ proc determinantal_resolve(matrix M, int r){
 	//------------------------------------------------------------------
 	//TODO 
 	//init data structure depending on the status
+	list minorsize  = datalist[3][2];
+	export(minorsize);
 	while(stat == "gauss"){			//the only status without centers. Can obtain more than once in a row 
 		M = generic_gauss(M, nrows(M), ncols(M));
 		stat = calculate_process_of_center_calculation(M);
+		datalist[3][2] = minorsize;
 	}
 	if(stat == "binresol"){
 		//create list of binomials
@@ -210,7 +213,12 @@ proc determinantal_resolve(matrix M, int r){
 		cent = calculate_center(BO,"BO");	
 	}
 	if(defined(centerlist)){
-		cent = calculate_center(centerlist,"Hu");	//TODO later delete superfluent entries in centerlist
+		if(size(centerlist)>1){
+			cent = calculate_center(centerlist,"Hu");	//TODO later delete superfluent entries in centerlist
+		}else{
+			stat = "transformation";
+			datalist[3][1] = stat;
+		}
 	}
 
 	BlowUpTree = BlowUpTree +  CopyDataInNextChartsAndBlowUp(M,cent,1);
@@ -244,19 +252,28 @@ proc determinantal_resolve(matrix M, int r){
 				}
 			}
 			if (defined(centerlist)){
-				ideal cent = compute_center();	//last center in list deletes centerlist but chooses a right center!!
-				export(cent);
-				//Optimierung: trotzdem prüfen ob bereits simmultaneously locally monomial!!!
-			}
-			
+				if(size(centerlist)>1){
+					ideal cent = calculate_center(centerlist,"Hu");	//TODO later delete superfluent entries in centerlist
+					export(cent);
+				}else{
+					stat = "transformation";
+					datalist[3][1] = stat;
+				}
+			}	
 		}
+		
 		if(!defined(cent)){				//new status have to start; no center already choosen
 			stat = calculate_process_of_center_calculation(M);
+			datalist[3][1] = stat;
 			ideal cent;
 			export(cent);
+			list minorsize  = datalist[3][2];
+			export(minorsize);
 			while(stat == "gauss"){			//the only status without centers. Can obtain more than once in a row 
 				M = generic_gauss(M, nrows(M), ncols(M));
 				stat = calculate_process_of_center_calculation(M);
+				datalist[3][1] = stat;
+				datalist[3][2] = minorsize;
 			}
 			//init data structure depending on the status
 			if(stat == "binresol"){
@@ -374,18 +391,21 @@ EXAMPLE: example calculate_process_of_center_calculation; shows an example
 	if(isLocallyMonomial(M) == 0){
 		return("binresol");
 	}
-	if(isLocallyMonomial(M) == 1 and isSimultaneouslyLocallyMonomial(M) == 0){
-		return("Hu");
-	}
-	if(isSimultaneouslyLocallyMonomial(M) and isMonomial(M) == 0){
-		return("transformation");
-	}
 	if(isMonomial(M) == 1 and isresolvedMonomial(M) == 0){ 
 		return("monomial");
 	}
 	if(isresolvedMonomial(M) == 1){
 		return("gauss");
 	}
+	//TODO: Check if only the ideal of minors equals <1> or if there is a 1-entry!!!
+	// can assume that entries are at least locally monomial here
+	if(isLocallyMonomial(M) == 1 and isSimultaneouslyLocallyMonomial(M) == 0){
+		return("Hu");
+	}
+	if(isSimultaneouslyLocallyMonomial(M) and isMonomial(M) == 0){
+		return("transformation");
+	}
+
 	return("");
 }
 
@@ -400,12 +420,24 @@ EXAMPLE: example isLocallyMonomial; shows an example
 	int LocallyMonomial = 1;
 	int number_cols = ncols(M);
 	int number_rows = nrows(M);
+	list factorlist;
 	
 	for(i=1;i<=number_rows;i++){
 		for(j=1; j<= number_cols; j++){
 			if(size(M[i,j])>1){				// at least binomial
-				if(absValue(M[i,j][1]) != 1 and absValue(M[i,j][2]) != 1){		//M[i,j] = 1-x^A or x^A-1
-					LocallyMonomial = 0;
+				factorlist = factorize(M[i,j]);
+				if(size(factorlist[1]) == 2){					//nothing to factor out
+					if(absValue(M[i,j][1]) != 1 and absValue(M[i,j][2]) != 1){		//M[i,j] = 1-x^A or x^A-1
+						LocallyMonomial = 0;
+					}
+				}else{	//(x^A-x^B) factor out and search the binomial factor
+					for(k=2;k<=size(factorlist[1]);k++){
+						if(size(factorlist[1][k]) >1){			
+							if(absValue(factorlist[1][k][1]) != 1 and absValue(factorlist[1][k][2]) != 1){		//M[i,j] = y^C(1-x^A) or y^C(x^A-1)
+								LocallyMonomial = 0;
+							}
+						}
+					}
 				}
 			}
 		}
@@ -430,10 +462,26 @@ RETURN: 1 if the entries of M are simultaneously locally monomial, 0 if there is
 EXAMPLE: example isSimultaneouslyLocallyMonomial; shows an example
 "
 {
+	int i,j,k;
+	
 	if(isLocallyMonomial(M) == 0){
 		return(0);
 	}
-	list centerlist = HuAlgorithm(M);
+	for(i=1;i<=number_rows;i++){
+		for(j=1; j<= number_cols; j++){
+			factorlist = factorize(M[i,j]);
+			if(size(factorlist[1]) > 2){			//modify element and factor out! TODO: Only exceptional components?!?!
+				for(k=2;k<=size(factorlist[1]);k++){
+					if(size(factorlist[1][k]) >1){			
+						M[i,j] = factorlist[1][k];
+					}
+				}
+			}		
+		}
+	}
+	print(M);
+	//modifies entries of the form y^C(1-x^B); y^C exceptional 
+	list centerlist = HuAlgorithm(M);			
 	if(size(centerlist) == 1){				//emptylist is the only entry
 		return(1);
 	}
@@ -498,7 +546,7 @@ EXAMPLE: example isresolvedMonomial; shows an example
 	int number_rows = nrows(M);
 	
 	if(isMonomial(M) == 0){
-		Error("Not monomial Matrix");
+		return(0);
 	}
 
 	ideal J = minor(M,1);					//Maybe ideal equals 1 but matrix has no 1-entry e.g. x and 1-x are in the ideal.... TODO create covering
@@ -532,8 +580,22 @@ EXAMPLE: example GenerateListOfBinomials; shows an example
 	
 	for(i=1;i<=number_rows;i++){
 		for(j=1; j<= number_cols; j++){
-			if(isLocallyMonomial(M[i,j])==0){				// at least binomial
-				returnlist[size(returnlist)+1] = M[i,j];
+			factorlist = factorize(M[i,j]);
+			if(size(factorlist[1]) > 2){			//modify element and factor out! TODO: Only exceptional components?!?!
+				for(k=2;k<=size(factorlist[1]);k++){
+					if(size(factorlist[1][k]) >1){
+						if(absValue(factorlist[1][k][1]) != 1 and absValue(factorlist[1][k][2]) != 1){			
+							returnlist[size(returnlist)+1] = factorlist[1][k];	// -x(3)^4+x(2)^2 wird auch factorisiert!!!
+
+						}
+					}
+				}
+			} else{
+				if(size(M[i,j])>1){				// at least binomial
+					if(absValue(M[i,j][1]) != 1 and absValue(M[i,j][2]) != 1){		//M[i,j] != 1-x^A or x^A-1
+						returnlist[size(returnlist)+1] = M[i,j];
+					}
+				}
 			}
 		}
 	}				
@@ -584,20 +646,22 @@ EXAMPLE: example CreateBinomialFromMonomialMatrix; shows an example
 	int i;
 	
 	ideal tmpideal = std(minor(M,1));
-	int d = Maxord(0,tmpideal)[1];						//TODO: ambient space???
+	int d = MaxOrd(0,tmpideal)[1];						//TODO: ambient space???
 	int idealsize = size(tmpideal);						// we need 2*idealsize many new variables
 	
-	ring tmpr = 0,(z(1..2*idealsize)),dp;
-	def newr = r + tmpr;								// TODO: Is this a good method to construct the new ring? 
+	//ring tmpr = 0,(z(1..2*idealsize)),dp;				//Not necessary in char 0
+	ring tmpr = 0,(z(1..idealsize)),dp;
+	def newr = r + tmpr;								// TODO: This is not!!! a good method to construct the new ring  
 	setring(newr);
 	matrix Mnew = fetch(r,M);
+	//TODO: fetch whole datalist
 	ideal tmpideal = fetch(r,tmpideal);
 	
 	for(i=1;i<=idealsize;i++){
-		retideal[i] = var(n+2*i-1)^d * var(n+2*i ) + tmpideal[i];			// J = <y_{2l}^{d-1}y_{2l+1} + x^{A_l}>, but we want to start with y_1 instead of y_2 
+		retideal[i] = var(n+i)^d + tmpideal[i];			// J = <y_{2l}^{d-1}y_{2l+1} + x^{A_l}>, but we want to start with y_1 instead of y_2 
 	}
-	
-	return(retideal);									//maybe return more data, like r and new basering 
+	//TODO: Change ring in list of all charts, substitute r with newr
+	return(datalist, newr);									//maybe return more data, like r and new basering 
 }example{
 		//TODO
 }
@@ -621,7 +685,7 @@ EXAMPLE: example CopyDataInNextChartAndBlowUp; shows an example
 	if(EqualityOfIdeal(Center,0) == 1){	//Transformation status
 		//TODO: generate a covering which are the next charts without a blow up!
 		list covering = generateCovering(datalist);
-		
+		// auch unten in der for-schleife gesondert behandeln
 	}else{	
 		successorList = blowUp3(W,Center);
 	}
@@ -651,7 +715,10 @@ EXAMPLE: example CopyDataInNextChartAndBlowUp; shows an example
 			}
 		}
 		//Noch anderes mit übergeben?
-
+		//TODO: anpassen an datalist!!!!
+		//schauen wie BO in resolve.lib transformiert wird
+		//alles einzeln abbilden
+		//darauf achten, dass alles irgendwie ein ringelement hat
 		ideal abb = BlowUpMap(abb);					//abbildung aus resolve.lib //TODO: mit bM verknuepfen!!!!
 		export(abb); 	
 		matrix N = BlowUpMap(M);				// total transform
@@ -667,6 +734,15 @@ EXAMPLE: example CopyDataInNextChartAndBlowUp; shows an example
 		
 		list minorsize = BlowUpMap(minorsize);
 		export(minorsize);
+		
+		if(datalist[3][1] == ""){		//det monomial case
+			// update of status checks whether there is a 1 entry in the matrix
+			if(isresolvedMonomial(M)){
+				kill(BO);
+				stat = "gauss";
+				//TODO: Minize variables in the ring -> delete the added y-variables!!!
+			}
+		}
 	}
 	return(successorList);
 }example{
