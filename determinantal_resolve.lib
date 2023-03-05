@@ -264,38 +264,15 @@ proc determinantal_resolve(matrix M, int sizeOfMinor){
 		//if we are in the middle of a resolve or a HU resolution, shorten the process and going on!
 		if(defined(BO) or defined(centerlist)){
 			if(defined(BO)){
-				int monomfinished = 0;
-				if(stat == "monomial"){
-					ideal Jmonom = minor(M,1);
-					if(EqualityOfIdeal(Jmonom,1) == 1){
-						monomfinished = 1;
-						kill(BO);
-						//reduce variables in the ring
-						def rnew = finishedDetMonomialCase(datalist);
-						if(defined(Chart)){
-							kill(Chart);
-						}
-						//TODO: ggf noch sachen rüberziehen?
-					}
-				}
-				if(monomfinished == 0){
-					ideal cent = compute_center();			//BO could be deleted if center equals 1; No center than
-					if(EqualityOfIdeal(cent,1) == 1){
-						kill(center);
-						if(stat == "monomial"){
-							def rnew = finishedDetMonomialCase(datalist);
-							if(defined(Chart)){
-								kill(Chart);
-							}	
-							//TODO: ggf noch sachen rüberziehen?
-						}
-					}else{
-						export(cent);
-					}
+				ideal cent = compute_center();			//BO could be deleted if center equals 1; No center than
+				if(EqualityOfIdeal(cent,1) == 1){
+					kill(center);
+				}else{
+					export(cent);
 				}
 			}
-			if (defined(centerlist)){
-				if(size(centerlist)>1){
+			if(defined(centerlist)){
+				if(size(centerlist) > 1){
 					ideal cent = calculate_center(centerlist,"Hu");	//TODO later delete superfluent entries in centerlist
 					export(cent);
 				}else{
@@ -339,7 +316,7 @@ proc determinantal_resolve(matrix M, int sizeOfMinor){
 			}
 			if(stat == "monomial"){
 
-				ring rnew = CreateBinomialFromMonomialMatrix(M);
+				ring rnew = CreateBinomialFromMonomialMatrix(M);	//Modify method s.t. it exports datalist and path automatically
 
 				ideal J = retideal; //was created in method and is global in the ring rnew
 				list BO = createBO(J);
@@ -866,7 +843,7 @@ EXAMPLE: example CopyDataInNextChartAndBlowUp; shows an example
 		datalist[4] = E;
 		
 		if(BOdefined){ 
-			list BO;			//TODO funkioniert das hier so ? oder andere funktion aus resolve anwenden???
+			list BO;			
 			BO[1] = aS;
 			BO[2] = sT;
 			BO[4] = BlowUpMap(BO[4]);
@@ -891,8 +868,6 @@ EXAMPLE: example CopyDataInNextChartAndBlowUp; shows an example
 		matrix N = BlowUpMap(M);				// total transform
 		matrix Ntmp = weakTransformOfMatrix(N);
 		datalist[2] = Ntmp;
-		//number_cols = ncols(N);
-		//number_rows = nrows(N);
 
 		def path = imap(r,path);				//init pathmatrix 
 		path=path,[chartnumber,j];
@@ -904,33 +879,28 @@ EXAMPLE: example CopyDataInNextChartAndBlowUp; shows an example
 		list minorsize = datalist[3][2];
 		export(minorsize);
 		
-		
+		//determinantal monomial case is finished:
 		if(datalist[3][1] == "monomial"){
-			if(EqualityOfIdeal(minor(Ntmp,1), 1) == 1) {		//det monomial case is ready
-				//Pruefe auf 1-Eintrag; sonst überdecken!
+			ideal Jmonom = minor(M,1);
+			if(EqualityOfIdeal(Jmonom,1) == 1){
 				kill(BO);
-				//ringvariablen minimieren! y-variablen werden nicht mehr benötigt
+				//reduce variables in the ring
+				def rnew = finishedDetMonomialCase(datalist);		//method exports, datalist and path
+				setring(rnew);
+				if(defined(newring)){
+					kill(newring);
+				}
 			}
 		}
 		
 		
-		//HU is ready:
+		//HU is finished:
 		if(defined(stat)){
 			if(stat == "transformation"){
 				datalist[3][1] = stat;
 			}
 		}else{
 			datalist[3][1] =  calculate_process_of_center_calculation(Ntmp);
-		
-			if(datalist[3][1] == ""){		//det monomial case
-				// update of status checks whether there is a 1 entry in the matrix
-				if(isresolvedMonomial(M)){
-					kill(BO);
-					stat = "gauss";
-					//TODO: Minimize variables in the ring -> delete the added y-variables!!!
-				}
-			}
-			//TODO: aktuellen Status prüfen und ggf aktualisieren:
 		}
 		
 	}
