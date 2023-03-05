@@ -150,13 +150,13 @@ example
 //BO killen wenn final chart für binresolve ODER det monomial case -> 1 entry
 //centerlist nicht killen, wenn leer 
 //TODO: erkenne wenn r-minoren aufgelöst sind!
-proc determinantal_resolve(matrix M, int r){
-	if(r > min(nrows(M), ncols(M))){
+proc determinantal_resolve(matrix M, int sizeOfMinor){
+	if(sizeOfMinor > min(nrows(M), ncols(M))){
 		ERROR("There are no r-minors in M");
 	}
 	
-	list datalist = createDatalist(M,r);	
-	//ideal minorideal = minor(M,r);									// Zusätzlich prüfen ob 'fertig' ???
+	list datalist = createDatalist(M,sizeOfMinor);	
+	//ideal minorideal = minor(M,sizeOfMinor);									// Zusätzlich prüfen ob 'fertig' ???
 	
 	module path = [0,-1];												//path of the current chart, autoconverted to matrix
 	export(path);
@@ -195,11 +195,25 @@ proc determinantal_resolve(matrix M, int r){
 		cent = 0;		//dummy value; in order to identify it in the blow up method. In there we calculate the covering.
 	}
 	if(stat == "monomial"){
-		ideal J = CreateBinomialFromMonomialMatrix(M);
+		def r = basering;
+		ring rnew = CreateBinomialFromMonomialMatrix(M);
+		ideal J = retideal; //was created in method and is global in the ring rnew
 		list BO = createBO(J);
+		
+		//TODO: fetch everything
+		//fetch datalist:
+		list datalist;
+		datalist[1] = fetch(r,datalist[1]);
+		datalist[2] = fetch(r,datalist[2]);		
+		datalist[3] = fetch(r,datalist[3]);		
+		datalist[4] = fetch(r,datalist[4]);
+		datalist[5] = fetch(r,datalist[5]);
+		datalist[6] = fetch(r,datalist[6]);				 
+		export(BO);
+		export(datalist);
 	}
 	
-	if(min(ncols(M),nrows(M)) == 1){
+	if((min(ncols(M),nrows(M)) == 1) or (minorsize[1] == 1)){
 		return(resbinomial2(minor(M,1)));			//resolve ideal of the (binomial) entries of M
 	}
 	
@@ -233,6 +247,9 @@ proc determinantal_resolve(matrix M, int r){
 	for(i = 2; i<= size(BlowUpTree);i++){			
 		if(defined(Chart)){
 			kill(Chart);
+		}
+		if(defined(rnew)){
+			kill(rnew);
 		}
 		def Chart = BlowUpTree[i];
 		setring(Chart);
@@ -295,8 +312,26 @@ proc determinantal_resolve(matrix M, int r){
 				// Only a dummy value
 			}
 			if(stat == "monomial"){
-				ideal J = CreateBinomialFromMonomialMatrix(M);
+
+				ring rnew = CreateBinomialFromMonomialMatrix(M);
+
+				ideal J = retideal; //was created in method and is global in the ring rnew
 				list BO = createBO(J);
+		
+				//TODO: fetch everything
+				//fetch datalist:
+				list datalist;
+				datalist[1] = fetch(Chart,datalist[1]);
+				datalist[2] = fetch(Chart,datalist[2]);		
+				datalist[3] = fetch(Chart,datalist[3]);		
+				datalist[4] = fetch(Chart,datalist[4]);
+				datalist[5] = fetch(Chart,datalist[5]);
+				datalist[6] = fetch(Chart,datalist[6]);				 
+				export(BO);
+				export(datalist);
+				//substitute achtual chart in ringlist:
+				kill(Chart);
+				BlowUpTree[i] = rnew;
 				cent = compute_center(BO,"BO");
 			}
 		
@@ -354,6 +389,9 @@ proc rMinorsResolved(list datalist){
 //TODO: Lists BO and centerlist have to be global!
 proc calculate_center(){
 
+	int i,j;
+	int n = nvars(basering);
+	
 	ideal center;
 	if(defined(centerlist)){
 		//assume: centerlist is not empty!
@@ -366,13 +404,31 @@ proc calculate_center(){
 		}
 	}
 	if(defined(BO)){
-		list Descendlist = calculate_centerBO(BO, chartnumber);  
+		list Descendlist = calculate_centerBO(BO, 1);  
 		BO = Descendlist[1][1]; 	//Only the first BO needed
 		center = Descendlist[3];
 		if(EqualityOfIdeal(center,1) == 1){		//final chart in resolve.lib
 			kill(BO);													//TODO!!!! neuen status ermitteln und dann dadrin weitermachen
 		}
+		if(defined(BO)){
+			if(datalist[3][1] == "monomial"){
+				//remove unneeded charts and center components
+				matrix M = datalist[2];
+				ideal varmatrix = variables(M);
+				for(i = 1; i<=n;i++){
+					if(EqualityOfIdeal(reduce(varmatrix,var(i)), varmatrix) == 1){		// var(i) not in matrix
+						for(j=1;j<=size(center);j++){
+							if(center[j] == var(i)){
+								center = delete(center,j);			//remove center component
+							}
+						}
+					}
+				}
+			}
+		}
 	}
+	
+	
 	return(center);
 }
 //dummy function for later improvements and more flexibility
@@ -642,26 +698,26 @@ EXAMPLE: example CreateBinomialFromMonomialMatrix; shows an example
 {		//requires a monomial matrix M
 	def r = basering;			//TODO: save ring in List of Data in order to change back afterwards
 	int n = nvars(r);
-	ideal retideal;
 	int i;
+	
 	
 	ideal tmpideal = std(minor(M,1));
 	int d = MaxOrd(0,tmpideal)[1];						//TODO: ambient space???
 	int idealsize = size(tmpideal);						// we need 2*idealsize many new variables
 	
 	//ring tmpr = 0,(z(1..2*idealsize)),dp;				//Not necessary in char 0
-	ring tmpr = 0,(z(1..idealsize)),dp;
-	def newr = r + tmpr;								// TODO: This is not!!! a good method to construct the new ring  
-	setring(newr);
-	matrix Mnew = fetch(r,M);
+	execute("ring tmpr=("+charstr(basering)+"),((u(1..n),z(1..idealsize))),(dp(n),dp(idealsize));");
+	matrix Mnew = fetch(r,M);	//reihenfolge der variablen wichtig!
 	//TODO: fetch whole datalist
 	ideal tmpideal = fetch(r,tmpideal);
-	
+	ideal retideal;
 	for(i=1;i<=idealsize;i++){
 		retideal[i] = var(n+i)^d + tmpideal[i];			// J = <y_{2l}^{d-1}y_{2l+1} + x^{A_l}>, but we want to start with y_1 instead of y_2 
 	}
+	print(retideal);
+	export(retideal);
 	//TODO: Change ring in list of all charts, substitute r with newr
-	return(datalist, newr);									//maybe return more data, like r and new basering 
+	return(tmpr);		//seems that is only possible to return the ring and not change the ring in an external method; Everything else have to be exported!
 }example{
 		//TODO
 }
