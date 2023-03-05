@@ -208,9 +208,11 @@ proc determinantal_resolve(matrix M, int sizeOfMinor){
 		datalist[3] = fetch(r,datalist[3]);		
 		datalist[4] = fetch(r,datalist[4]);
 		datalist[5] = fetch(r,datalist[5]);
-		datalist[6] = fetch(r,datalist[6]);				 
+		datalist[6] = fetch(r,datalist[6]);
+		def path = fetch(r,path);				 
 		export(BO);
 		export(datalist);
+		export(path);
 	}
 	
 	if((min(ncols(M),nrows(M)) == 1) or (minorsize[1] == 1)){
@@ -253,19 +255,43 @@ proc determinantal_resolve(matrix M, int sizeOfMinor){
 		}
 		def Chart = BlowUpTree[i];
 		setring(Chart);
-
-		number_cols = ncols(N);
-		number_rows = nrows(N);
-		mindim = min(ncols(M),nrows(M));
+		
+		matrix M = datalist[2];
+		int number_cols = ncols(M);
+		int number_rows = nrows(M);
+		int mindim = min(ncols(M),nrows(M));
 					
 		//if we are in the middle of a resolve or a HU resolution, shorten the process and going on!
 		if(defined(BO) or defined(centerlist)){
 			if(defined(BO)){
-				ideal cent = compute_center();			//BO could be deleted if center equals 1; No center than
-				if(EqualityOfIdeal(cent,1) == 1){
-					kill(center);
-				}else{
-					export(cent);
+				int monomfinished = 0;
+				if(stat == "monomial"){
+					ideal Jmonom = minor(M,1);
+					if(EqualityOfIdeal(Jmonom,1) == 1){
+						monomfinished = 1;
+						kill(BO);
+						//reduce variables in the ring
+						def rnew = finishedDetMonomialCase(datalist);
+						if(defined(Chart)){
+							kill(Chart);
+						}
+						//TODO: ggf noch sachen rüberziehen?
+					}
+				}
+				if(monomfinished == 0){
+					ideal cent = compute_center();			//BO could be deleted if center equals 1; No center than
+					if(EqualityOfIdeal(cent,1) == 1){
+						kill(center);
+						if(stat == "monomial"){
+							def rnew = finishedDetMonomialCase(datalist);
+							if(defined(Chart)){
+								kill(Chart);
+							}	
+							//TODO: ggf noch sachen rüberziehen?
+						}
+					}else{
+						export(cent);
+					}
 				}
 			}
 			if (defined(centerlist)){
@@ -326,9 +352,11 @@ proc determinantal_resolve(matrix M, int sizeOfMinor){
 				datalist[3] = fetch(Chart,datalist[3]);		
 				datalist[4] = fetch(Chart,datalist[4]);
 				datalist[5] = fetch(Chart,datalist[5]);
-				datalist[6] = fetch(Chart,datalist[6]);				 
+				datalist[6] = fetch(Chart,datalist[6]);		
+				def path = fetch(r,path);		 
 				export(BO);
 				export(datalist);
+				export(path);
 				//substitute achtual chart in ringlist:
 				kill(Chart);
 				BlowUpTree[i] = rnew;
@@ -352,8 +380,19 @@ proc determinantal_resolve(matrix M, int sizeOfMinor){
 			EndCharts[size(EndCharts)+1] = BlowUpTree[i];
 		}
 	}
-
+	
+	
 	//------------------------------------------------------------------
+	
+	
+	setring(r);
+	if(defined(Chart)){
+		kill(Chart);
+	}
+	if(defined(rnew)){
+		kill(rnew);
+	}
+	
 	return(EndCharts,BlowUpTree);
 }example{
 	ring r = 0,(x(1..4)),dp;
@@ -716,14 +755,61 @@ EXAMPLE: example CreateBinomialFromMonomialMatrix; shows an example
 	}
 	print(retideal);
 	export(retideal);
-	//TODO: Change ring in list of all charts, substitute r with newr
+	
+	list datalist;
+	datalist[1] = fetch(r,datalist[1]);
+	datalist[2] = fetch(r,datalist[2]);
+	datalist[3] = fetch(r,datalist[3]);
+	datalist[4] = fetch(r,datalist[4]);
+	datalist[5] = fetch(r,datalist[5]);
+	datalist[6] = fetch(r,datalist[6]);
+	export(datalist);
+	def path = fetch(r,path);
+	export(path);
+	
 	return(tmpr);		//seems that is only possible to return the ring and not change the ring in an external method; Everything else have to be exported!
 }example{
 		//TODO
 }
+
+
+proc finishedDetMonomialCase(list datalist){
+	int i,j;
+	
+	def r = basering;
+	
+	ideal W = datalist[1];
+	matrix M = datalist[2];
+	list E = datalist[4];
+	
+	ideal sufficientVars = variables(M)+variables(W);
+	for (i=1;i<= size(E);i++){
+		sufficientVars = sufficientVars + variables(E);
+	}
+	int n = size(sufficientVars);
+	string StringsufficientVars = string(sufficientVars);
+	
+	//Construct new ring with less variables
+	execute("ring tmpr=("+charstr(basering)+"),("+StringsufficientVars+"),(dp(n));");
+	
+	//TODO: imap, da Reihenfolge unwichtig, gleicher Name auf gleichen Namen abbilden
+	list datalist;
+	datalist[1] = imap(r,datalist[1]);
+	datalist[2] = imap(r,datalist[2]);
+	datalist[3] = imap(r,datalist[3]);
+	datalist[4] = imap(r,datalist[4]);
+	datalist[5] = imap(r,datalist[5]);
+	datalist[6] = imap(r,datalist[6]);
+	export(datalist);
+	def path = imap(r,path);
+	export(path);
+	return(tmpr);
+}
+
+
 //----------------------------------------------------------------------
 //TODO: Ueberarbeiten; datentyp liste 
-proc CopyDataInNextChartsAndBlowUp_generic(list datalist, ideal Center, int chartnumber)
+proc CopyDataInNextChartsAndBlowUp(list datalist, ideal Center, int chartnumber)
 "USAGE: CopyDataInNextChartAndBlowUp(matrix M, ideal Center, int chartnumber ); computes the blow up and copies the data (strict transform, ideal and pathmatrix) in the successorcharts
 RETURN: list of rings which represent the charts during the whole resolution process
 EXAMPLE: example CopyDataInNextChartAndBlowUp; shows an example
