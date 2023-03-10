@@ -455,21 +455,41 @@ RETURN: a string which encodes the status of the resolution process
 EXAMPLE: example calculate_process_of_center_calculation; shows an example
 "
 {	
-	if(isLocallyMonomial(M) == 0){
+	
+	int i,j,k;
+	//Create matrix N wich entries are the strict transforms of the entries of M:
+	matrix N = M;
+	int numCols = ncols(N);
+	int numRows = nrows(N);
+	list E = datalist[4];
+	int sizeE = size(E);
+	
+	for(i=1;i<=numRows; i++){
+		for(j=1;j<=numCols; j++){
+			for(k = 1; k<=sizeE; k++){
+				if(E[k] != 1){
+					N[i,j] = sat(N[i,j],E[k])[1];
+				}
+			}
+		}
+	}
+	
+	
+	if(isLocallyMonomial(N) == 0){
 		return("binresol");
 	}
-	if(isMonomial(M) == 1 and isresolvedMonomial(M) == 0){ 
+	if(isMonomial(N) == 1 and isresolvedMonomial(N) == 0){ 
 		return("monomial");
 	}
-	if(isresolvedMonomial(M) == 1){
+	if(isresolvedMonomial(N) == 1){
 		return("gauss");
 	}
 	//TODO: Check if only the ideal of minors equals <1> or if there is a 1-entry!!!
 	// can assume that entries are at least locally monomial here
-	if(isLocallyMonomial(M) == 1 and isSimultaneouslyLocallyMonomial(M) == 0){
+	if(isLocallyMonomial(N) == 1 and isSimultaneouslyLocallyMonomial(N) == 0){
 		return("Hu");
 	}
-	if(isSimultaneouslyLocallyMonomial(M) and isMonomial(M) == 0){
+	if(isSimultaneouslyLocallyMonomial(N) and isMonomial(N) == 0){
 		return("transformation");
 	}
 
