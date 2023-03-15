@@ -175,6 +175,11 @@ proc determinantal_resolve(matrix M, int sizeOfMinor){
 	//init data structure depending on the status
 	list minorsize  = datalist[3][2];
 	export(minorsize);
+	
+	if((min(ncols(M),nrows(M)) == 1) or (minorsize[1] == 1)){
+		return(resbinomial2(minor(M,1)));			//resolve ideal of the (binomial) entries of M
+	}
+	
 	while(stat == "gauss"){			//the only status without centers. Can obtain more than once in a row 
 		M = generic_gauss(M, nrows(M), ncols(M));
 		stat = calculate_process_of_center_calculation(M);
@@ -204,7 +209,7 @@ proc determinantal_resolve(matrix M, int sizeOfMinor){
 		
 		//TODO: fetch everything
 		//fetch datalist:
-		list datalist = fetch(r,datalist);
+		//list datalist = fetch(r,datalist);
 		//list datalist;
 		//datalist[1] = fetch(r,datalist[1]);
 		//datalist[2] = fetch(r,datalist[2]);		
@@ -212,19 +217,17 @@ proc determinantal_resolve(matrix M, int sizeOfMinor){
 		//datalist[4] = fetch(r,datalist[4]);
 		//datalist[5] = fetch(r,datalist[5]);
 		//datalist[6] = fetch(r,datalist[6]);
-		def path = fetch(r,path);				 
+		//def path = fetch(r,path);				 
 		export(BO);
-		export(datalist);
-		export(path);
+		//export(datalist);
+		//export(path);
 		matrix M = datalist[2];
 		list minorsize  = datalist[3][2];
 		export(minorsize);
 		ideal cent;
 	}
 	
-	if((min(ncols(M),nrows(M)) == 1) or (minorsize[1] == 1)){
-		return(resbinomial2(minor(M,1)));			//resolve ideal of the (binomial) entries of M
-	}
+
 	
 	datalist[3][1] = stat;
 	//compute the center
@@ -233,11 +236,12 @@ proc determinantal_resolve(matrix M, int sizeOfMinor){
 	//centerlist in HU should be automatically deleted
 
 	if(defined(BO)){
-		cent = calculate_center(BO,"BO");	
+		cent = calculate_center();	
+		print(cent);
 	}
 	if(defined(centerlist)){
 		if(size(centerlist)>1){
-			cent = calculate_center(centerlist,"Hu");	//TODO later delete superfluent entries in centerlist
+			cent = calculate_center();	//TODO later delete superfluent entries in centerlist
 		}else{
 			stat = "transformation";
 			datalist[3][1] = stat;
@@ -271,7 +275,7 @@ proc determinantal_resolve(matrix M, int sizeOfMinor){
 		//if we are in the middle of a resolve or a HU resolution, shorten the process and going on!
 		if(defined(BO) or defined(centerlist)){
 			if(defined(BO)){
-				ideal cent = compute_center();			//BO could be deleted if center equals 1; No center than
+				ideal cent = calculate_center();			//BO could be deleted if center equals 1; No center than
 				if(EqualityOfIdeal(cent,1) == 1){
 					kill(center);
 					kill(BO);
@@ -281,7 +285,7 @@ proc determinantal_resolve(matrix M, int sizeOfMinor){
 			}
 			if(defined(centerlist)){
 				if(size(centerlist) > 1){
-					ideal cent = calculate_center(centerlist,"Hu");	//TODO later delete superfluent entries in centerlist
+					ideal cent = calculate_center();	//TODO later delete superfluent entries in centerlist
 					export(cent);
 				}else{
 					stat = "transformation";
@@ -312,11 +316,11 @@ proc determinantal_resolve(matrix M, int sizeOfMinor){
 				//init  BO in the data type of resbinomial2
 				ideal J = binomiallist[1];
 				list BO = createBO(J);
-				cent = compute_center(BO,"BO");
+				cent = calculate_center()
 			}
 			if(stat == "Hu"){
 				list centerlist = HuAlgorithm(M);
-				cent = compute_center(centerlist,"Hu");		
+				cent = calculate_center()		
 			}
 			
 			if(stat == "transformation"){
@@ -337,12 +341,12 @@ proc determinantal_resolve(matrix M, int sizeOfMinor){
 				//substitute actual chart in ringlist:
 				BlowUpTree[i] = rnew;
 				kill(Chart);
-				cent = compute_center(BO,"BO");
+				cent = calculate_center();
 			}
 		
 			if(min(ncols(M),nrows(M)) == 1){	// binomial ideal -> resbinomial2
 				list BO = createBO(minor(M,1));
-				ideal cent = calculate_center(BO);
+				ideal cent = calculate_center();
 				export(cent);
 			}
 		}
@@ -374,6 +378,10 @@ proc determinantal_resolve(matrix M, int sizeOfMinor){
 }example{
 	ring r = 0,(x(1..4)),dp;
 	matrix M = genericmat(2,2);
+	M[1,1] = x(1)^2*x(2);
+	M[1,2] = x(2)^3;
+	M[2,1] = x(3)^2;
+	M[2,2] = x(3)*x(4)*x(2);
 	determinantal_resolve(M,2);
 }
 //----------------------------------------------------------------------
@@ -783,7 +791,9 @@ proc finishedDetMonomialCase(list datalist){
 	
 	ideal sufficientVars = variables(M)+variables(W);
 	for (i=1;i<= size(E);i++){
-		sufficientVars = sufficientVars + variables(E);
+		if(E[i] != 1){
+			sufficientVars = sufficientVars + variables(E[i]);
+		}
 	}
 	int n = size(sufficientVars);
 	string StringsufficientVars = string(sufficientVars);
@@ -792,13 +802,14 @@ proc finishedDetMonomialCase(list datalist){
 	execute("ring tmpr=("+charstr(basering)+"),("+StringsufficientVars+"),(dp(n));");
 	
 	//TODO: imap, da Reihenfolge unwichtig, gleicher Name auf gleichen Namen abbilden
-	list datalist;
-	datalist[1] = imap(r,datalist[1]);
-	datalist[2] = imap(r,datalist[2]);
-	datalist[3] = imap(r,datalist[3]);
-	datalist[4] = imap(r,datalist[4]);
-	datalist[5] = imap(r,datalist[5]);
-	datalist[6] = imap(r,datalist[6]);
+	list datalist = imap(r,datalist);
+	//list datalist;
+	//datalist[1] = imap(r,datalist[1]);
+	//datalist[2] = imap(r,datalist[2]);
+	//datalist[3] = imap(r,datalist[3]);
+	//datalist[4] = imap(r,datalist[4]);
+	//datalist[5] = imap(r,datalist[5]);
+	//datalist[6] = imap(r,datalist[6]);
 	export(datalist);
 	def path = imap(r,path);
 	export(path);
