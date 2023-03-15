@@ -945,10 +945,41 @@ proc generateOneCovering(list datalist){
 		}
 	}
 	
+	//covering by charts:
+	list successorlist = list();
+	int n = nvars(basering);
+	ideal hypersurface;
+	
+	//No new parametersystem needed
+	for(i=1;i<= size(SubsetsIdeal);i++){
+		hypersurface = SubsetsIdeal[i];
+		if(defined(new_r)){kill(r_new);}
+		execute("ring new_r=("+charstr(basering)+"),("+varstr(basering)+"),(dp(n));");
+		ideal I = fetch(old_r,hypersurface);
+		
+	//	setring(old_r);
+	//	map f =(new_r,normcrossideal);
+	//	setring(new_r);
+		list datalist = fetch(datalist);
+		module path = fetch(old_r,path);
+		export(datalist);
+		export(path);
+		datalist[1] =  sat(datalist[1],I)[1];
+		//datalist[2] =  sat(datalist[2],I)[1];
+		//TODO: Matrix abbilden; Nachrechnen!!!
+		//datalist[3] =  sat(datalist[3],I)[1];
+		datalist[4] =  sat(datalist[4],I)[1];						
+		datalist[5] =  sat(datalist[5],I)[1];		
+		//saturation: 
+
+		
+		setring(r_old);
+		successorlist[size(successorlist)+1] = new_r;
+	}
 	// SubsetList[j] has the entries which generates the 1 --> Hypersurfaces h_k which generates the charts D(h_k).
 	//Same as HU Covering 
 	
-	 
+	 return(successorlist);
 }
 
 
@@ -982,6 +1013,7 @@ proc generateCovering(list datalist){
 	int n;
 	ideal normcrossideal;
 	ideal complementideal;
+	//ggf alle hyperflächen einzeln
 	for (member = 1; member <= size(L1); member++){ 	 //member stimmt mit i aus L und indices ueberein
 		N = L1[member];
 		n = size(N[1]);
@@ -1002,8 +1034,19 @@ proc generateCovering(list datalist){
 		datalist[5] = preimage(old_r,f,datalist[5]);
 		datalist[6] = preimage(old_r,f,datalist[6]);
 		module path = fetch(old_r,path);
+		export(datalist);
+		export(path);
 		//ist das alles?
 		
+		datalist[1] =  sat(datalist[1],I)[1];
+		//datalist[2] =  sat(datalist[2],I)[1];
+		//TODO: Matrix abbilden; Nachrechnen!!!
+		//datalist[3] =  sat(datalist[3],I)[1];
+		datalist[4] =  sat(datalist[4],I)[1];						
+		datalist[5] =  sat(datalist[5],I)[1];	
+		
+		setring(r_old);
+		successorlist[size(successorlist)+1] = new_r;
 	}
 	
 	//TODO:
