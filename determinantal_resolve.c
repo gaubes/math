@@ -1,4 +1,3 @@
-
 version=" "; // $Id$
 category=" ";
 info="
@@ -195,11 +194,7 @@ proc determinantal_resolve(matrix M, int sizeOfMinor){
 	}
 	if(stat == "Hu"){
 		//we get a list of centers
-		list HuList = HuAlgorithm(M);
-		list centerlist = HuList[1];
-		list CoveringList = HuList[2];
-		export(centerlist);
-		export(CoveringLust);
+		list centerlist = HuAlgorithm(M);
 		//first centers are the centers on level????
 		//TODO Optimation: Only add necessary centers to centerlist
 	}
@@ -314,7 +309,6 @@ proc determinantal_resolve(matrix M, int sizeOfMinor){
 				stat = calculate_process_of_center_calculation(M);
 				datalist[3][1] = stat;
 				datalist[3][2] = minorsize;
-				print(M);
 			}
 			//init data structure depending on the status
 			if(stat == "binresol"){
@@ -326,11 +320,7 @@ proc determinantal_resolve(matrix M, int sizeOfMinor){
 				cent = calculate_center();
 			}
 			if(stat == "Hu"){
-				list HuList = HuAlgorithm(M);
-				list centerlist = HuList[1];
-				list CoveringList = HuList[2];
-				export(centerlist);
-				export(CoveringLust);
+				list centerlist = HuAlgorithm(M);
 				cent = calculate_center();		
 			}
 			
@@ -454,17 +444,8 @@ proc calculate_center(){
 				for(i = 1; i<=n;i++){
 					if(EqualityOfIdeal(reduce(varmatrix,var(i)), varmatrix) == 1){		// var(i) not in matrix
 						for(j=1;j<=size(center);j++){
-							if(size(center[j]) == 2){
-								if(center[j][1] == var(i)){
-									center[j] = center[j][2];
-								}
-								if(center[j][2] == var(i)){
-									center[j] = center[j][1];
-								}
-							}else{
-								if(center[j] == var(i)){
-									center = delete(center,j);			//remove center component
-								}
+							if(center[j] == var(i)){
+								center = delete(center,j);			//remove center component
 							}
 						}
 					}
@@ -578,7 +559,7 @@ EXAMPLE: example isSimultaneouslyLocallyMonomial; shows an example
 	}
 
 	//modifies entries of the form y^C(1-x^B); y^C exceptional 
-	list centerlist = HuAlgorithm(M)[1];			
+	list centerlist = HuAlgorithm(M);			
 	if(size(centerlist) == 1){				//emptylist is the only entry
 		return(1);
 	}
@@ -746,7 +727,13 @@ EXAMPLE: example CreateBinomialFromMonomialMatrix; shows an example
 	print(retideal);
 	export(retideal);
 	list datalist = fetch(r,datalist);
-
+	//list datalist;
+	//datalist[1] = fetch(r,datalist[1]);
+	//datalist[2] = fetch(r,datalist[2]);
+	//datalist[3] = fetch(r,datalist[3]);
+	//datalist[4] = fetch(r,datalist[4]);
+	//datalist[5] = fetch(r,datalist[5]);
+	//datalist[6] = fetch(r,datalist[6]);
 	export(datalist);
 	def path = fetch(r,path);
 	export(path);
@@ -781,7 +768,13 @@ proc finishedDetMonomialCase(list datalist){
 	
 	//TODO: imap, da Reihenfolge unwichtig, gleicher Name auf gleichen Namen abbilden
 	list datalist = imap(r,datalist);
-
+	//list datalist;
+	//datalist[1] = imap(r,datalist[1]);
+	//datalist[2] = imap(r,datalist[2]);
+	//datalist[3] = imap(r,datalist[3]);
+	//datalist[4] = imap(r,datalist[4]);
+	//datalist[5] = imap(r,datalist[5]);
+	//datalist[6] = imap(r,datalist[6]);
 	print(datalist);
 	export(datalist);
 	def path = imap(r,path);
@@ -867,8 +860,6 @@ EXAMPLE: example CopyDataInNextChartAndBlowUp; shows an example
 			if(centerlistdefined == 1){
 				list centerlist = BlowUpMap(centerlist);
 				export(centerlist);
-				list CoveringList = BlowUpMap(CoveringList);
-				export(CoveringList);
 			}
 			if(centerlistdefined == 1){
 				string stat = "transformation";
@@ -966,6 +957,9 @@ proc generateOneCovering(list datalist){
 		execute("ring new_r=("+charstr(basering)+"),("+varstr(basering)+"),(dp(n));");
 		ideal I = fetch(old_r,hypersurface);
 		
+	//	setring(old_r);
+	//	map f =(new_r,normcrossideal);
+	//	setring(new_r);
 		list datalist = fetch(datalist);
 		module path = fetch(old_r,path);
 		export(datalist);
@@ -1011,7 +1005,7 @@ proc generateCovering(list datalist){
 	ideal Iold;
 		
 	//ähnlich zu y = SystemOfParameters(member, vectorsL1, CoDimZ);  die Hyperflächenliste bauen
-	// Diese Liste direkt bei HuAlgorithm mit zurückgeben -> letzte zentrumsstufe [1] und rest [2]	
+		
 	// Liste Hyperflächen L1[i][1][j] -> i-te Karte schneidende Hyperflächen
 	//	L1[i][2][j] -> i-te Karte nicht-schneidende Hyperflächen (D(hl...hk))
 	list successorlist = list();

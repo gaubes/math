@@ -28,11 +28,8 @@ EXAMPLE: example HuAlgorithm; shows an example
 {
 	list L;
 	L = ListForHU(M);
-	list IntersectionLattice = HuCalc(L);
-	
-	// store last label components for the later covering:
-	list coveringlist = IntersectionLattice[size(IntersectionLattice)];
-	return(list(IntersectionLattice,coveringlist));
+
+	return(HuCalc(L));
 }
 example
 { 	ring r = 0,(x,y),dp;
