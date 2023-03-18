@@ -102,15 +102,18 @@ proc updateAmbientSpace(list BO){
 			DListtmp = DeltaList(tmpBO);
 			if(size(DListtmp) == 1){
 				BO[1] = BO[1]+ tmpBO[2];
-				BO[2] = delete(BO[2],j);
-				DList = DeltaList(BO);
+				if(size(BO[2]) > 1){
+					BO[2] = delete(BO[2],j);
+					DList = DeltaList(BO);
+					j--;
+				}else{
+					BO[2] = 0;
+					break;
+				}
 			}
 		}
 	}
-		
-	if(size(BO[2]) == 0){
-		
-	}
+
 	return(BO,DList);
 }
 
@@ -123,6 +126,9 @@ EXAMPLE: example DescendInDimension; shows an example
 	int j,k;
 	list CoeffBOList;
 	list tmpBOlist = updateAmbientSpace(BO);
+	if(tmpBOlist[1][2] == 0){												//ggf spaeter noch zu ueberarbeiten
+		return(tmpBOlist,1,tmpBOlist[1][1],ideal(0),ideal(0));
+	}
 	list BOtmp = tmpBOlist[1];
 	intvec b_old = BO[3];	
 	list DList = tmpBOlist[2];
