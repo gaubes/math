@@ -776,14 +776,15 @@ proc finishedDetMonomialCase(list datalist){
 	}
 	int n = size(sufficientVars);
 	string StringsufficientVars = string(sufficientVars);
-	print(StringsufficientVars);
+	print("StringsufficientVars");
+	StringsufficientVars;
 	//Construct new ring with less variables
 	execute("ring tmpr=("+charstr(basering)+"),("+StringsufficientVars+"),(dp(n));");
-	
 	//TODO: imap, da Reihenfolge unwichtig, gleicher Name auf gleichen Namen abbilden
 	list datalist = imap(r,datalist);
 
-	print(datalist);
+	print("datalist: (finished monomial case)");
+	datalist;
 	export(datalist);
 	def path = imap(r,path);
 	export(path);
@@ -910,7 +911,11 @@ EXAMPLE: example CopyDataInNextChartAndBlowUp; shows an example
 					kill(BO);
 					//reduce variables in the ring
 					print("monomial case: reduce number of variables");
+					if(defined(rnew)){
+						kill(rnew);
+					}
 					def rnew = finishedDetMonomialCase(datalist);		//method exports, datalist and path
+					successorList[j] = rnew;
 					setring(rnew);
 					if(defined(newring)){
 						kill(newring);
