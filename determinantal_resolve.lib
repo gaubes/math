@@ -169,11 +169,13 @@ proc determinantal_resolve(matrix M, int sizeOfMinor){
 	list EndCharts;
 	
 	string stat = datalist[3][1];
+	print("stat:");
+	stat;
 	ideal cent;
 	export(cent);
 	//------------------------------------------------------------------
-	//TODO 
-	//init data structure depending on the status
+
+
 	list minorsize  = datalist[3][2];
 	export(minorsize);
 	
@@ -192,6 +194,7 @@ proc determinantal_resolve(matrix M, int sizeOfMinor){
 		//init  BO in the data type of resbinomial2
 		ideal J = binomiallist[1];
 		list BO = createBO(J);
+		export(BO);
 	}
 	if(stat == "Hu"){
 		//we get a list of centers
@@ -210,29 +213,13 @@ proc determinantal_resolve(matrix M, int sizeOfMinor){
 		def rnew = CreateBinomialFromMonomialMatrix(M);
 		setring(rnew);
 		ideal J = retideal; //was created in method and is global in the ring rnew
-		list BO = createBO(J);
-		
-		//TODO: fetch everything
-		//fetch datalist:
-		//list datalist = fetch(r,datalist);
-		//list datalist;
-		//datalist[1] = fetch(r,datalist[1]);
-		//datalist[2] = fetch(r,datalist[2]);		
-		//datalist[3] = fetch(r,datalist[3]);		
-		//datalist[4] = fetch(r,datalist[4]);
-		//datalist[5] = fetch(r,datalist[5]);
-		//datalist[6] = fetch(r,datalist[6]);
-		//def path = fetch(r,path);				 
+		list BO = createBO(J);		 
 		export(BO);
-		//export(datalist);
-		//export(path);
 		matrix M = datalist[2];
 		list minorsize  = datalist[3][2];
 		export(minorsize);
 		ideal cent;
 	}
-	
-
 	
 	datalist[3][1] = stat;
 	//compute the center
@@ -241,28 +228,30 @@ proc determinantal_resolve(matrix M, int sizeOfMinor){
 	//centerlist in HU should be automatically deleted
 
 	if(defined(BO)){
-		cent = calculate_center();	
+		cent = calculate_center(1);
 		print(cent);
 	}
 	if(defined(centerlist)){
 		if(size(centerlist)>1){
-			cent = calculate_center();	//TODO later delete superfluent entries in centerlist
+			cent = calculate_center(1);	//TODO later delete superfluent entries in centerlist
 		}else{
 			stat = "transformation";
 			datalist[3][1] = stat;
 		}
 	}
-
+	print("cent");
+	print(cent);
 	BlowUpTree = BlowUpTree +  CopyDataInNextChartsAndBlowUp(datalist,cent,1);
 	
 	int i,j,k;	
-	int number_cols, number_rows;
 	int mindim;
 	int chart_counter = size(BlowUpTree);
 	
 	int oldsize;	//maybe usefull for optimizations, when checking whether we reach r-minors as entries
 
-	for(i = 2; i<= size(BlowUpTree);i++){			
+	for(i = 2; i<= size(BlowUpTree);i++){
+		print("chartnumber");
+		i;			
 		if(defined(Chart)){
 			kill(Chart);
 		}
@@ -272,8 +261,11 @@ proc determinantal_resolve(matrix M, int sizeOfMinor){
 		def Chart = BlowUpTree[i];
 		setring(Chart);
 		
+		print(path);
 		matrix M = datalist[2];
+		print("Matrix");
 		print(M);
+
 		int number_cols = ncols(M);
 		int number_rows = nrows(M);
 		int mindim = min(ncols(M),nrows(M));
@@ -281,17 +273,20 @@ proc determinantal_resolve(matrix M, int sizeOfMinor){
 		//if we are in the middle of a resolve or a HU resolution, shorten the process and going on!
 		if(defined(BO) or defined(centerlist)){
 			if(defined(BO)){
-				ideal cent = calculate_center();			//BO could be deleted if center equals 1; No center than
-				if(EqualityOfIdeal(cent,1) == 1){
-					kill(center);
+				print("continue BO");
+				BO;
+				ideal cent = calculate_center(i);			//BO could be deleted if center equals 1; No center than		
+				if(EqualityOfIdeal(cent,1) == 1 or EqualityOfIdeal(cent,BO[1]) == 1 or EqualityOfIdeal(cent,BO[2]) == 1){
+					kill(cent);
 					kill(BO);
 				}else{
 					export(cent);
 				}
 			}
 			if(defined(centerlist)){
+				print("continue Hu");
 				if(size(centerlist) > 1){
-					ideal cent = calculate_center();	//TODO later delete superfluent entries in centerlist
+					ideal cent = calculate_center(i);	//TODO later delete superfluent entries in centerlist
 					export(cent);
 				}else{
 					stat = "transformation";
@@ -303,6 +298,7 @@ proc determinantal_resolve(matrix M, int sizeOfMinor){
 		
 		if(!defined(cent)){				//new status have to start; no center already choosen
 			stat = calculate_process_of_center_calculation(M);
+			print("stat");
 			print(stat);
 			datalist[3][1] = stat;
 			ideal cent;
@@ -314,7 +310,9 @@ proc determinantal_resolve(matrix M, int sizeOfMinor){
 				stat = calculate_process_of_center_calculation(M);
 				datalist[3][1] = stat;
 				datalist[3][2] = minorsize;
+				print("Matrix");
 				print(M);
+				print(stat);
 			}
 			//init data structure depending on the status
 			if(stat == "binresol"){
@@ -323,7 +321,10 @@ proc determinantal_resolve(matrix M, int sizeOfMinor){
 				//init  BO in the data type of resbinomial2
 				ideal J = binomiallist[1];
 				list BO = createBO(J);
-				cent = calculate_center();
+				export(BO);
+				cent = calculate_center(i);
+				
+				//TODO: wir brauchen 1-x^A statt y-x^A; via y^2 - x^2A ?
 			}
 			if(stat == "Hu"){
 				list HuList = HuAlgorithm(M);
@@ -331,7 +332,7 @@ proc determinantal_resolve(matrix M, int sizeOfMinor){
 				list CoveringList = HuList[2];
 				export(centerlist);
 				export(CoveringLust);
-				cent = calculate_center();		
+				cent = calculate_center(i);		
 			}
 			
 			if(stat == "transformation"){
@@ -345,6 +346,8 @@ proc determinantal_resolve(matrix M, int sizeOfMinor){
 
 				def rnew = CreateBinomialFromMonomialMatrix(M);	//Modify method s.t. it exports datalist and path automatically
 				setring(rnew);
+				print("monomial ideal:");
+				retideal;
 				ideal J = retideal; //was created in method and is global in the ring rnew
 				list BO = createBO(J);
 				export(BO);
@@ -352,15 +355,17 @@ proc determinantal_resolve(matrix M, int sizeOfMinor){
 				//substitute actual chart in ringlist:
 				BlowUpTree[i] = rnew;
 				kill(Chart);
-				cent = calculate_center();
+				cent = calculate_center(i);
 			}
 		
 			if(min(ncols(M),nrows(M)) == 1){	// binomial ideal -> resbinomial2
 				list BO = createBO(minor(M,1));
-				ideal cent = calculate_center();
+				ideal cent = calculate_center(i);
 				export(cent);
 			}
 		}
+		print("cent:");
+		print(cent);
 		if(EqualityOfIdeal(cent,1) == 0 ){
 			//TODO: pruefe ob r-minoren resolved sind
 			if(rMinorsResolved(datalist) == 0){		
@@ -387,12 +392,19 @@ proc determinantal_resolve(matrix M, int sizeOfMinor){
 	
 	return(EndCharts,BlowUpTree);
 }example{
-	ring r = 0,(x(1..4)),dp;
+	//ring r = 0,(x(1..10)),dp;
+	//matrix M = skewmat(6);
+	//matrix M = genericmat(3,3);
+	ring r = 0,(x,y,z),dp;
 	matrix M = genericmat(2,2);
 	//M[1,1] = x(1)^2*x(2);
 	//M[1,2] = x(2)^3;
 	//M[2,1] = x(3)^2;
 	//M[2,2] = x(3)*x(4)*x(2);
+	M[1,1] = x^2-y^2*z^2;
+	M[1,2] = x^3;
+	M[2,1] = y^4;
+	M[2,2] = z^2;
 	determinantal_resolve(M,2);
 }
 //----------------------------------------------------------------------
@@ -423,7 +435,7 @@ proc rMinorsResolved(list datalist){
 
 //----------------------------------------------------------------------
 //TODO: Lists BO and centerlist have to be global!
-proc calculate_center(){
+proc calculate_center(int chartnumber){
 
 	int i,j;
 	int n = nvars(basering);
@@ -440,7 +452,7 @@ proc calculate_center(){
 		}
 	}
 	if(defined(BO)){
-		list Descendlist = calculate_centerBO(BO, 1);  
+		list Descendlist = calculate_centerBO(BO, chartnumber);  
 		BO = Descendlist[1][1]; 	//Only the first BO needed
 		center = Descendlist[3];
 		if(EqualityOfIdeal(center,1) == 1){		//final chart in resolve.lib
@@ -472,7 +484,6 @@ proc calculate_center(){
 			}
 		}
 	}
-	
 	print("center:");
 	center;
 	return(center);
@@ -675,17 +686,24 @@ EXAMPLE: example GenerateListOfBinomials; shows an example
 	int number_cols = ncols(M);
 	int number_rows = nrows(M);
 	list returnlist;
+	poly f;
 	
 	for(i=1;i<=number_rows;i++){
 		for(j=1; j<= number_cols; j++){
 			if(size(M[i,j])>1){				// at least binomial
 				if(absValue(M[i,j][1]) != 1 and absValue(M[i,j][2]) != 1){		//M[i,j] != 1-x^A or x^A-1
-					returnlist[size(returnlist)+1] = M[i,j];
+					f = M[i,j];
+					//Check whether  M[i,j] has the form y-x^A or x^A-y
+					if(rvar(f[1]) > 0 or rvar(f[2]) > 0){
+						f = (f[1])^2 + (f[2])^2;
+						returnlist[size(returnlist)+1] = f;
+					}else{	
+						returnlist[size(returnlist)+1] = f;
+					}
 				}
 			}
 		}
-	}				
-	
+	}			
 	return(returnlist);
 }example{
 	ring r =0, (x,y,z),dp;
@@ -802,10 +820,7 @@ RETURN: list of rings which represent the charts during the whole resolution pro
 EXAMPLE: example CopyDataInNextChartAndBlowUp; shows an example
 "
 {
-	
-	print("BO");
-	BO;
-	int j, number_cols,number_rows;
+	int j,k, number_cols,number_rows;
 	def r = basering;
 	int BOdefined, centerlistdefined;
 	if(defined(BO)){BOdefined = 1;}
@@ -838,8 +853,6 @@ EXAMPLE: example CopyDataInNextChartAndBlowUp; shows an example
 	
 		int number_center_components = size(successorList);
 
-	
-		print(Center);
 
 		for(j = 1;j<=number_center_components; j++){
 			if(defined(newring)){kill newring;}
@@ -863,14 +876,17 @@ EXAMPLE: example CopyDataInNextChartAndBlowUp; shows an example
 			eD;
 			datalist[4] = E;
 		
-			if(BOdefined){ 
+			if(BOdefined){
 				list BO = BlowUpMap(BO);			
 				BO[1] = aS;
-				BO[2] = sT;
+				BO[2] = sat(BO[2],eD[1])[1];
 				print("BO:");
 				BO;
-				//BO[4] = BlowUpMap(BO[4]);
+				for(k=1; k<=size(BO[4]);k++){
+				BO[4][k] = sat(BO[4][k],eD[1])[1];	
+				}
 				BO[4][size(BO[4])+1] = eD;
+				
 				BO[5] = bM;
 				export(BO);
 			}

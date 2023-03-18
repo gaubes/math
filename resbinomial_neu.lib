@@ -165,7 +165,6 @@ EXAMPLE: example DescendInDimension; shows an example
 	ideal Iweak;
 	list BOcontrol;
 	int casenumber;
-	
 	while(descend_finished(center, btmp, CoeffBOList[size(CoeffBOList)]) == 0){	
 		counter++;	
 		
@@ -204,7 +203,8 @@ EXAMPLE: example DescendInDimension; shows an example
 				//BO7new[counter+1] = size(BOtmp[4]);						//too many intersections but not a problem
 				orderdecreased = 1;
 				BO7new[counter] = size(BOtmp[4]);		//ggf aendern. vorher war hier -1
-			}else{print("fehler2");BO7new[counter] = BO7old[counter];}
+			}else{//print("fehler2");
+				BO7new[counter] = BO7old[counter];}
 		} else{
 			BO7new[counter] = 0;
 		}
