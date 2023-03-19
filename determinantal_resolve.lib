@@ -344,12 +344,14 @@ proc determinantal_resolve(matrix M, int sizeOfMinor){
 				print("continue BO");
 				BO;
 				ideal cent = calculate_center(i);			//BO could be deleted if center equals 1; No center than		
+				print("cent berechnet");
 				if(EqualityOfIdeal(cent,1) == 1 or EqualityOfIdeal(cent,BO[1]) == 1 or EqualityOfIdeal(cent,BO[2]) == 1){
 					kill(cent);
 					kill(BO);
 				}else{
 					export(cent);
 				}
+				print("exportiert oder gelöscht");
 			}
 			if(defined(centerlist)){
 				print("continue Hu");
@@ -1072,22 +1074,32 @@ proc generateOneCovering(list datalist, int chartnumber){
 			L = AppendListToList(L,list(M[i,j]));		//no duplicates
 		}
 	}
+	
 	int sizeL = size(L); 
 	list SubsetList;
 	ideal SubsetsIdeal;
+	int ignoreSubset = 0;
 	for(i=2; i<= sizeL; i++){
 		if(EqualityOfIdeal(SubsetsIdeal,1) == 1){
 			break;
 		}
 		SubsetList = subsets(sizeL,i);
 		SubsetsIdeal = 0;
+		ignoreSubset = 0;
 		for(j=1; j<=size(SubsetList); j++){
 			for(k=1;k<=size(SubsetList[j]); k++){
-				SubsetsIdeal = SubsetsIdeal + L[SubsetList[j][k]];
+				if(L[SubsetList[j][k]] == 1){
+					ignoreSubset = 1;
+				}
+				if(ignoreSubset == 0){
+					SubsetsIdeal = SubsetsIdeal + L[SubsetList[j][k]];
+				}
 			}
-			if(EqualityOfIdeal(SubsetsIdeal,1) == 1){
-				k--;
-				break;
+			if(ignoreSubset == 0){
+				if(EqualityOfIdeal(SubsetsIdeal,1) == 1){
+					k--;
+					break;
+				}
 			}
 		}
 		if(EqualityOfIdeal(SubsetsIdeal,1) == 1){
@@ -1113,6 +1125,9 @@ proc generateOneCovering(list datalist, int chartnumber){
 				if(M[k,l] == hypersurface){
 					posrow = k;
 					poscol = l;
+					print("Position:");
+					poscol;
+					posrow;
 				}
 			}
 		}
@@ -1130,6 +1145,8 @@ proc generateOneCovering(list datalist, int chartnumber){
 		datalist[1] =  sat(datalist[1],I)[1];
 		//datalist[2] =  sat(datalist[2],I)[1];
 		matrix N = datalist[2];
+		print("old M:");
+		print(N);
 		if(poscol != 0){
 			for(k=1;k<=nrows(N); k++){
 				for(l=1; l<= ncols(N); l++){
@@ -1139,10 +1156,11 @@ proc generateOneCovering(list datalist, int chartnumber){
 				}
 			} 			
 		//TODO: Matrix abbilden; Alle Einträge mit I multiplizieren und dann für Eintrag (i,j) = 1 column i  und row j weak transformen
-			N[posrow,poscol] = 1;
-		}
-		else{print("Eintrag nicht in Matrix"); ~;}
-		datalist[2] = N;
+		N[posrow,poscol] = 1;
+		print("new M:");
+		print(N);
+		}else{print("Eintrag nicht in Matrix"); ~;}
+		
 		
 		for(j=1;j<=size(datalist[4]);j++){
 			datalist[4][j] =  sat(ideal(datalist[4][j]),I)[1];						
