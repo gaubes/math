@@ -146,6 +146,74 @@ example
    eD;
    bM;
 }
+
+proc print_determinantal_resolve(matrix M , int sizeOfMinor){
+	link l1 = ":w Testfaelle/detresolve.txt";
+	
+	list L = determinantal_resolve(M ,sizeOfMinor);
+	ring r = basering;
+	
+	int i;int j;
+	int sizeL = size(L[2]);
+	
+	
+	for(i=1; i<=sizeL; i++){
+		
+		if(defined(actual_chart)){kill actual_chart;} 
+		def actual_chart = L[2][i];
+		setring(actual_chart);
+		fprintf(l1,"Chartnumber: %s",i);
+		fprintf(l1,"matrix: %s ",print(datalist[2]));
+		fprintf(l1,"state: %s ",datalist[3][1]);
+		fprintf(l1,"Minorsize: %s ",datalist[3][2]);
+		fprintf(l1,"datalist[4]: %s ",datalist[4]);
+		if(defined(BO)){
+			fprintf(l1,"BO: ");
+			fprintf(l1,"BO[1]: %s ",BO[1]);
+			fprintf(l1,"BO[2]: %s ",BO[2]);
+			fprintf(l1,"BO[3]: %s ",BO[3]);
+			fprintf(l1,"BO[4]: %s ",BO[4]);
+			fprintf(l1,"BO[5]: %s ",BO[5]);
+			fprintf(l1,"BO[6]: %s ",BO[6]);
+			fprintf(l1,"BO[7]: %s ",BO[7]);				
+		}
+		if(defined(centerlist)){
+			for(j=1;j<=size(centerlist);j++){
+				fprintf(l1,"centerlist[j]: %s ",centerlist[j]);
+			}
+			for(j=1;j<=size(CoveringList);j++){
+				fprintf(l1,"CoveringList[j]: %s ",CoveringList[j]);
+			}
+		}
+		if(defined(cent)){
+			fprintf(l1,"center: %s ",cent);
+		}
+		fprintf(l1,"path:");
+		fprintf(l1,"%p",matrix(path));
+		fprintf(l1,"");
+	}
+	
+	setring(r);
+	
+	fprintf(l1,"Number of total charts: %s", sizeL);
+	fprintf(l1,"Number of end charts: %s", size(L[1]));
+	//fprintf(l1,"runtime: %s", L[3][1]);
+	
+	return();
+}example{
+	ring r = 0,(x,y,z),dp;
+	matrix M = genericmat(2,2);
+	//M[1,1] = x(1)^2*x(2);
+	//M[1,2] = x(2)^3;
+	//M[2,1] = x(3)^2;
+	//M[2,2] = x(3)*x(4)*x(2);
+	M[1,1] = x^2-y^2*z^2;
+	M[1,2] = x^3;
+	M[2,1] = y^4;
+	M[2,2] = z^2;
+	print_determinantal_resolve(M,2);	
+}
+
 //----------------------------------------------------------------------
 //TODO
 //BO killen wenn final chart für binresolve ODER det monomial case -> 1 entry
@@ -206,7 +274,7 @@ proc determinantal_resolve(matrix M, int sizeOfMinor){
 		//first centers are the centers on level????
 		//TODO Optimation: Only add necessary centers to centerlist
 	}
-	if(stat == "transformation"){
+	if(stat == "transformation" or stat == "OneCovering"){
 		cent = 0;		//dummy value; in order to identify it in the blow up method. In there we calculate the covering.
 	}
 	if(stat == "monomial"){
@@ -327,6 +395,7 @@ proc determinantal_resolve(matrix M, int sizeOfMinor){
 				//TODO: wir brauchen 1-x^A statt y-x^A; via y^2 - x^2A ?
 			}
 			if(stat == "Hu"){
+
 				list HuList = HuAlgorithm(M);
 				list centerlist = HuList[1];
 				list CoveringList = HuList[2];
@@ -341,6 +410,9 @@ proc determinantal_resolve(matrix M, int sizeOfMinor){
 				}
 				cent = 0; //No blow up but the covering generates new charts 
 				// Only a dummy value
+			}
+			if(stat == "OneCovering"){
+				cent = 0;
 			}
 			if(stat == "monomial"){
 
@@ -531,6 +603,29 @@ EXAMPLE: example calculate_process_of_center_calculation; shows an example
 		return("gauss");
 	}
 	//TODO: Check if only the ideal of minors equals <1> or if there is a 1-entry!!!
+	if(EqualityOfIdeal(minor(N,1),1) == 1){
+		int isOne = 0;
+		for(i=1;i<=numRows; i++){
+			for(j=1;j<=numCols; j++){
+				if(N[i,j] == 1){
+					isOne = 1;
+				}
+			}
+		}
+		if(isOne == 0){
+			return("OneCovering");
+		}
+	}
+	
+	list HuList = ListForHU(N);
+	ideal I;
+	for(i=1;i<=size(HuList);i++){
+		I = I + HuList[i];
+	}
+	if(EqualityOfIdeal(I,1)==1){
+		return("OneCovering");
+	}
+	
 	// can assume that entries are at least locally monomial here
 	if(isLocallyMonomial(N) == 1 and isSimultaneouslyLocallyMonomial(N) == 0){
 		return("Hu");
@@ -590,6 +685,7 @@ EXAMPLE: example isSimultaneouslyLocallyMonomial; shows an example
 	}
 
 	//modifies entries of the form y^C(1-x^B); y^C exceptional 
+
 	list centerlist = HuAlgorithm(M)[1];			
 	if(size(centerlist) == 1){				//emptylist is the only entry
 		return(1);
@@ -842,15 +938,15 @@ EXAMPLE: example CopyDataInNextChartAndBlowUp; shows an example
 	//TODO: Differ center == 0 (only transformation) and center != 0 case
 	list successorList;
 	
-	if(EqualityOfIdeal(Center,0) == 1){	//Transformation status
-		//TODO: generate a covering which are the next charts without a blow up!
-		list covering = generateCovering(datalist,chartnumber);
-		// auch unten in der for-schleife gesondert behandeln
-		//benötigt keine for-schleife mehr. wird direkt in generateCovering getan
+	if(EqualityOfIdeal(Center,0) == 1){	//Transformation
+		if(datalist[3][1] == "OneCovering"){
+			successorList = generateOneCovering(datalist,chartnumber);
+		}else{	
+			successorList = generateCovering(datalist,chartnumber);
+		}
+	
 	}else{	
-		successorList = blowUp3(W,Center);
-	
-	
+		successorList = blowUp3(W,Center);	
 		int number_center_components = size(successorList);
 
 
@@ -964,7 +1060,7 @@ EXAMPLE: example CopyDataInNextChartAndBlowUp; shows an example
 //----------------------------------------------------------------------
 
 proc generateOneCovering(list datalist, int chartnumber){
-	int i,j,k;
+	int i,j,k,l;
 	ring old_r = basering;
 	matrix M = datalist[2];
 	
@@ -976,35 +1072,56 @@ proc generateOneCovering(list datalist, int chartnumber){
 			L = AppendListToList(L,list(M[i,j]));		//no duplicates
 		}
 	}
-	
 	int sizeL = size(L); 
 	list SubsetList;
 	ideal SubsetsIdeal;
 	for(i=2; i<= sizeL; i++){
+		if(EqualityOfIdeal(SubsetsIdeal,1) == 1){
+			break;
+		}
 		SubsetList = subsets(sizeL,i);
 		SubsetsIdeal = 0;
 		for(j=1; j<=size(SubsetList); j++){
-			for(k=1;k<=size(SubsetList[j]); k++)
-			SubsetsIdeal = SubsetsIdeal + L[SubsetList[j][k]];
+			for(k=1;k<=size(SubsetList[j]); k++){
+				SubsetsIdeal = SubsetsIdeal + L[SubsetList[j][k]];
+			}
+			if(EqualityOfIdeal(SubsetsIdeal,1) == 1){
+				k--;
+				break;
+			}
 		}
 		if(EqualityOfIdeal(SubsetsIdeal,1) == 1){
 			break;
 		}
 	}
-	
+
 	//covering by charts:
 	list successorlist = list();
 	int n = nvars(basering);
 	ideal hypersurface;
 	
+	int poscol;
+	int posrow;
+	
 	//No new parametersystem needed
 	for(i=1;i<= size(SubsetsIdeal);i++){
 		hypersurface = SubsetsIdeal[i];
-		if(defined(new_r)){kill(r_new);}
+		poscol = 0;
+		posrow = 0;
+		for(k=1;k<=nrows(M); k++){
+			for(l=1; l<= ncols(M); l++){
+				if(M[k,l] == hypersurface){
+					posrow = k;
+					poscol = l;
+				}
+			}
+		}
+		 			
+		if(defined(new_r)){kill(new_r);}
 		execute("ring new_r=("+charstr(basering)+"),("+varstr(basering)+"),(dp(n));");
 		ideal I = fetch(old_r,hypersurface);
 		
-		list datalist = fetch(datalist);
+		list datalist = fetch(old_r,datalist);
 		module path = fetch(old_r,path);
 		path=path,[chartnumber,i];
 		
@@ -1012,14 +1129,29 @@ proc generateOneCovering(list datalist, int chartnumber){
 		export(path);
 		datalist[1] =  sat(datalist[1],I)[1];
 		//datalist[2] =  sat(datalist[2],I)[1];
-		//TODO: Matrix abbilden; Nachrechnen!!!
-		//datalist[3] =  sat(datalist[3],I)[1];
-		datalist[4] =  sat(datalist[4],I)[1];						
+		matrix N = datalist[2];
+		if(poscol != 0){
+			for(k=1;k<=nrows(N); k++){
+				for(l=1; l<= ncols(N); l++){
+					if(k!= posrow and l != poscol){
+						N[k,l] = I[1] * N[k,l];
+					}
+				}
+			} 			
+		//TODO: Matrix abbilden; Alle Einträge mit I multiplizieren und dann für Eintrag (i,j) = 1 column i  und row j weak transformen
+			N[posrow,poscol] = 1;
+		}
+		else{print("Eintrag nicht in Matrix"); ~;}
+		datalist[2] = N;
+		
+		for(j=1;j<=size(datalist[4]);j++){
+			datalist[4][j] =  sat(ideal(datalist[4][j]),I)[1];						
+		}
 		datalist[5] =  sat(datalist[5],I)[1];		
 		//saturation: 
 
 		
-		setring(r_old);
+		setring(old_r);
 		successorlist[size(successorlist)+1] = new_r;
 	}
 	// SubsetList[j] has the entries which generates the 1 --> Hypersurfaces h_k which generates the charts D(h_k).
@@ -1417,17 +1549,24 @@ EXAMPLE: example weakTransformOfMatrix; shows an example
 	poly tmp_entry;
 	poly tmp_eDPowC;
 	int eDDividesRow;
-	
+
 	for(i=1; i<= number_rows;i++){
 		tmp_eDPowC = eD[1];
 		eDDividesRow = 1;
 		while(eDDividesRow){
 			for(j=1; j<=number_cols; j++){
 				if(N[i,j] != 0){									// without this, a skewsymmetric matrix is returned as total transform because of the zero entries
-					tmp_entry = N[i,j] div tmp_eDPowC;						
-					if(tmp_entry == 0){
-						eDDividesRow = 0;
-						break;
+					if(size(N[i,j]) == 1){
+						tmp_entry = N[i,j] div tmp_eDPowC;						
+						if(tmp_entry == 0){
+							eDDividesRow = 0;
+							break;
+						}
+					}else{						
+						if(N[i,j][1] div tmp_eDPowC == 0 or N[i,j][2] div tmp_eDPowC == 0){
+							eDDividesRow = 0;
+							break;
+						}	
 					}
 				}
 			}
@@ -1441,17 +1580,23 @@ EXAMPLE: example weakTransformOfMatrix; shows an example
 			N[i,j] = N[i,j] div tmp_eDPowC;
 		}
 	}
-	
 	//same procedure for each column:
 	for(j=1; j<= number_cols;j++){
 		tmp_eDPowC = eD[1];
 		eDDividesRow = 1;
 		while(eDDividesRow){
 			for(i=1; i<=number_rows; i++){
-				tmp_entry = N[i,j] div tmp_eDPowC;						
-				if(tmp_entry == 0){
-					eDDividesRow = 0;
-					break;
+				if(size(N[i,j]) == 1){
+					tmp_entry = N[i,j] div tmp_eDPowC;						
+					if(tmp_entry == 0){
+						eDDividesRow = 0;
+						break;
+					}
+				}else{						
+					if(N[i,j][1] div tmp_eDPowC == 0 or N[i,j][2] div tmp_eDPowC == 0){
+						eDDividesRow = 0;
+						break;
+					}	
 				}
 			}
 			if(eDDividesRow){
@@ -1464,7 +1609,6 @@ EXAMPLE: example weakTransformOfMatrix; shows an example
 			N[i,j] = N[i,j] div tmp_eDPowC;
 		}
 	}
-	
 	return(N);
 }example{
 	ring r = 0,(x(1..9)),dp;

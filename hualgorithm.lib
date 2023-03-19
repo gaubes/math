@@ -56,7 +56,7 @@ EXAMPLE: example ListForHU; shows an example
 
 	for(i = 1;i<= nrow; i++){
 		for(j=1;j<=ncol; j++){
-			f = M[i,j];
+			f = radical(M[i,j])[1];
 
 			if(MaxOrd(0,f)[1] == 1){					// f = 1-x^A or x
 				if(f != 1){		
@@ -84,8 +84,8 @@ EXAMPLE: example ListForHU; shows an example
 			}
 		}
 	} 
-	
-	
+	print("HuListe");
+	print(L);
 	return(L);											
 }
 example
