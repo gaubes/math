@@ -403,7 +403,7 @@ proc determinantal_resolve(matrix M, int sizeOfMinor){
 				list centerlist = HuList[1];
 				list CoveringList = HuList[2];
 				export(centerlist);
-				export(CoveringLust);
+				export(CoveringList);
 				cent = calculate_center(i);		
 			}
 			
@@ -993,8 +993,6 @@ EXAMPLE: example CopyDataInNextChartAndBlowUp; shows an example
 				if(centerlistdefined == 1){
 					list centerlist = BlowUpMap(centerlist);
 					export(centerlist);
-					list CoveringList = BlowUpMap(CoveringList);
-					export(CoveringList);
 				}
 				if(centerlistdefined == 1){
 					string stat = "transformation";
@@ -1013,7 +1011,10 @@ EXAMPLE: example CopyDataInNextChartAndBlowUp; shows an example
 			path=path,[chartnumber,j];
 			export(path);
 		
-
+			if(defined(CoveringList)){
+				list CoveringList = BlowUpMap(CoveringList);
+				export(CoveringList);	
+			}
 			//datalist[3] = BlowUpMap(datalist[3]);
 			list minorsize = datalist[3][2];
 			export(minorsize);
@@ -1208,7 +1209,7 @@ proc generateCovering(list datalist, int chartnumber){
 	list simlocmon = ListForHU(M);
 	for (i=1; i<= size(CoveringList);i++){
 		L1[i] = list();
-		L1[i][1] = CoverlingList[i];
+		L1[i][1] = CoveringList[i];
 	}
 	
 	int contained = 0; 
