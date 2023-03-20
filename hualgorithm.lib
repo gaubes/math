@@ -179,7 +179,7 @@ EXAMPLE: example CalculateIntersectionLattice; shows an example
 	for(j=1;j<=sizeL;j++){
 		IntersectionLattice[i][j] = L[j];
 		if (NotEmpty == 0 and L[j] != 1){
-			NotEmpty =1;
+			NotEmpty = 1;
 		}
 	}
 
@@ -257,6 +257,7 @@ EXAMPLE: example CalculateIntersectionLattice; shows an example
 	// A single empty list at the beginning is enough!
 	for(i=1;i<n;i++){
 		sizeL = size(IntersectionLattice);
+		if(size(IntersectionLattice) == 1){ break; }
 		if((EqualityOfList(IntersectionLattice[1],EmptyList) ==1) and (EqualityOfList(IntersectionLattice[2],EmptyList) ==1)){
 			IntersectionLattice = delete(IntersectionLattice,2);
 		}
