@@ -167,6 +167,8 @@ EXAMPLE: example CalculateIntersectionLattice; shows an example
 		sizeMinAss = size(MinAss);
 		if(sizeMinAss > 1){
 			L[j] = poly(MinAss[1][1]);
+			print("MinAss");
+			print(MinAss);
 			for(k=2; k<=sizeMinAss; k++){
 				L[size(L)+1] = poly(MinAss[k][1]);
 			}
@@ -226,23 +228,40 @@ EXAMPLE: example CalculateIntersectionLattice; shows an example
 		//IntersectionLatticeIdeal = CalculateIntersectionLatticeIdeal(IntersectionLattice[i][j]);
 		//if(EqualityOfIdeal(IntersectionLatticeIdeal,1) == 0){
 		if(size(IntersectionLattice[i]) > 0){
+			print("Set not empty");
+			print(IntersectionLattice);
+			print(i);
 			NotEmpty = 1;
 		}
 		
 		//}
+		
+		
+		//Hierwird zu viel gelöscht!!!
 		if(NotEmpty == 0 or (size(L) == i)){		//Termination
 			emptyOrOrigin = 1;
 			if(NotEmpty == 0){
+				print("Lösche letztes IntersectionLattice element");
+				print(IntersectionLattice);
+				print("------------");
 				IntersectionLattice = delete(IntersectionLattice,size(IntersectionLattice));
+				print("Letztes element gelöscht:");
+				print(IntersectionLattice);
+				print("------------");
 			}
 		}	
 		i++;
 	}
 
+	print("Intersectionlattice complete:");
+	print(IntersectionLattice);
+
 	//Delete superfluent components with less or equal n Elements
 	for(i=1;i<=n;i++){
 		if(size(IntersectionLattice)>=i){
 			for(j=1;j<=size(IntersectionLattice[i]);j++){
+				print("all pairwise list");
+				print(IntersectionLattice[i]);
 				if(allPairwiseTransversal(IntersectionLattice[i][j])){
 				// snc component
 					IntersectionLattice[i] = delete(IntersectionLattice[i],j);
@@ -253,6 +272,9 @@ EXAMPLE: example CalculateIntersectionLattice; shows an example
 	}
 	
 	list EmptyList = list();
+	print(IntersectionLattice);
+	print("Lösche emtpylists aus Hu");
+	
 	
 	// A single empty list at the beginning is enough!
 	for(i=1;i<n;i++){
@@ -284,7 +306,6 @@ proc allPairwiseTransversal(list L){
 
 	for (i=1; i<=sizeL; i++){
 		tmplist = delete(L,i);
-
 		if(transversalT(L[i],tmplist) == 0){
 			pairwiseTransversal = 0;
 			return(pairwiseTransversal);
