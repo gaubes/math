@@ -1169,54 +1169,54 @@ proc generateCovering(list datalist, int chartnumber){
 	matrix M = datalist[2];
 	ideal I = generateListsimlocmon(M);
 	
-	
-	int CoDimI = Codimension(I);
-	//Berechnung der Menge L:
-	matrix JI = jacob(I);
-	//list GeneratorList = GenerateL1(CoDimZ, J,I,0);
-	//list L1 = GeneratorList[1];
-	//list vectorsL1 = GeneratorList[2];
-  
-//	ideal polynomialFi;
-//	int s; poly detM; list y; int member;
-//	matrix N;
-	//matrix A;
-//	ideal Iold;
-	
 	list L1;
 	list simlocmon = ListForHU(M);
 	for (i=1; i<= size(HuList[2]);i++){
 		L1[i] = list();
 		L1[i][1] = HuList[2][i];
+		//TODO: Woher kommt L1[i][2]???
+	}
+
+	//First add exceptional divisors then add x_i+_ci, where c_i = 0,1 or -1
+	int sizeL1 = size(L1);
+	for(i=1;i<=sizeL1;i++){
+		for(j=1;j<=size(HuList[3]); j++){
+			sizeL1 = size(L1);
+			L1[i][1][size(L1[i][1])+1] = list();
+			L1[i][1][size(L1[i][1])] = HuList[3][i];
+			//L1[i][2] do not change
+		}
+		L1[i][1] = AddComponentToSystemOfParameters(L1[i][1], L1[i][2]);
 	}
 	
 	int contained = 0;
 	 
-	if(size(HuList[2]) == 0){
-		if(size(I) == n){
-			L1[1][1] = I;
-			L1[1][2] = list();
-		}else{
+	//if(size(HuList[2]) == 0){
+	//	if(size(I) == n){
+	//		L1[1][1] = I;
+	//		L1[1][2] = list();
+	//	}else{
 			//
-			list SubsetList = subsets(size(I),n);
+	//		list SubsetList = subsets(size(I),n);
 			
-		}
-	} else{
-		for(i=1; i<= size(HuList[2]);i++){
-			L1[i][2] = list();
-			contained = 0;
-			for(j = 1; j<= size(HuList[2][i]);j++){
-				for(k=1;k<=size(simlocmon);k++){			//remove dulicates!
-					if(HuList[2][i][j] == simlocmon[k]){
-						contained == 1;
-					}
-				}
-				if(contained == 0){
-					L1[i][2][size(L1[i][2])+1] = simlocmon[k];
-				}
-			}
-		}
-	}
+	//	}
+	//} else{
+	//	for(i=1; i<= size(HuList[2]);i++){
+	//		L1[i][2] = list();
+	//		contained = 0;
+	//		for(j = 1; j<= size(HuList[2][i]);j++){
+	//			for(k=1;k<=size(simlocmon);k++){			//remove dulicates!
+	//				if(HuList[2][i][j] == simlocmon[k]){
+	//					contained == 1;
+	//				}
+	//			}
+	//			if(contained == 0){
+	//				L1[i][2][size(L1[i][2])+1] = simlocmon[k];
+	//			}
+	//		}
+	//	}
+	//}
+	
 	// Diese Liste direkt bei HuAlgorithm mit zurückgeben -> letzte zentrumsstufe [1] und rest [2]	
 	// Liste Hyperflächen L1[i][1][j] -> i-te Karte schneidende Hyperflächen
 	//	L1[i][2][j] -> i-te Karte nicht-schneidende Hyperflächen (D(hl...hk))
@@ -1230,7 +1230,7 @@ proc generateCovering(list datalist, int chartnumber){
 	//ggf alle hyperflächen einzeln
 	for (member = 1; member <= size(L1); member++){ 	 //member stimmt mit i aus L und indices ueberein
 		N = L1[member];
-		n = size(N[1]);
+		//n = size(N[1]);
 
 
 		ideal normcrossideal;
@@ -1299,6 +1299,99 @@ proc generateListsimlocmon(matrix M){
 		}		
 		return(I);
 }
+
+
+//----------------------------------------------------------------------
+//Sollte nur mit einer L1 stufe passieren und complementliste mitgeben
+proc AddComponentToSystemOfParameters(list parametersystem, list complement){
+	int i,j,k; 
+	int n = nvars(basering);
+	if(size(parametersystem) == n){
+		return(L);
+	}
+	
+	
+	ideal listideal = 0;
+	ideal complementideal = 0;
+	for(i = 1; i<= size(parametersystem);i++){
+		listideal = listideal + parametersystem[i];
+	}
+	for(i = 1; i<= size(complement);i++){
+		complementideal = complementideal + complement[i];
+	}
+
+
+	// Add f_i = x_i+c_i where c_i = 0,1 or -1 and x_i a variable in the basering
+	// f_i has to fullfil the following conditions:
+	// 1. has to lie in D(h1...hr)
+	// f_i has to intersect each of the other components in the intersection point 
+	
+	int contained;
+	ideal tmplistideal;
+	//via bruteforce
+	for(i=1; i<=n; i++){
+		contained = 0;
+		for(j=1; j<= size(L[1]); j++){
+			if(var(i) == L[1][j]){
+				contained = 1;
+			}
+		}
+		//check  whether it intersects the parametersystem in the right point and lives in the complement
+		//var
+		if(contained == 0){
+			tmplistideal = listideal + var(i); 
+			if(EqualityOfIdeal(tmplistideal,1) == 0){
+				if (size(reduce(1,std(complementideal+tmplistideal))) == 0) { 	// complementideal cap tmplistideal = empty set
+					//Add var(i)+1 to list of parametersystems!
+					listideal = tmplistideal;
+					parametersystem[size(parametersystem)+1] = var(i);
+					i++;
+					continue;
+				}
+			}
+		}
+		
+		
+		//var + 1
+		if(contained == 0){
+			tmplistideal = listideal + (var(i)+1); 
+			if(EqualityOfIdeal(tmplistideal,1) == 0){
+				if (size(reduce(1,std(complementideal+tmplistideal))) == 0) { 	// complementideal cap tmplistideal = empty set
+					//Add var(i)+1 to list of parametersystems!
+					listideal = tmplistideal;
+					parametersystem[size(parametersystem)+1] = var(i)+1;
+					i++;
+					continue;
+				}
+			}
+		}
+		//var - 1
+		if(contained == 0){
+			tmplistideal = listideal + (var(i)-1); 
+			if(EqualityOfIdeal(tmplistideal,1) == 0){
+				if (size(reduce(1,std(complementideal+tmplistideal))) == 0) { 	// complementideal cap tmplistideal = empty set
+					//Add var(i)+1 to list of parametersystems!
+					listideal = tmplistideal;
+					parametersystem[size(parametersystem)+1] = var(i)+1;
+					i++;
+					continue;
+				}
+			}
+		}
+		 //TODO: optimizations
+	}
+	if(size(parametersystem) != n){
+		print("Size of system of parameters:");
+		print(parametersystem);
+		print("Number of ring variables:");
+		print(n);
+		~;
+	}
+	
+	
+	return(parametersystem);
+}
+
 
 
 

@@ -30,6 +30,9 @@ EXAMPLE: example HuAlgorithm; shows an example
 	L = ListForHU(M);
 	list IntersectionLattice = HuCalc(L);
 	
+	
+	//TODO:
+	// Add nongenerators to coveringlist
 	// store last label components for the later covering:
 	list coveringlist = IntersectionLattice[size(IntersectionLattice)];
 	return(list(IntersectionLattice,coveringlist));
