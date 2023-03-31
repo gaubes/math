@@ -181,8 +181,8 @@ proc print_determinantal_resolve(matrix M , int sizeOfMinor){
 			for(j=1;j<=size(HuList[1]);j++){
 				fprintf(l1,"centerlist[j]: %s ",HuList[1][j]);
 			}
-			for(j=1;j<=size(HuList[2]);j++){
-				fprintf(l1,"CoveringList[j]: %s ",HuList[2][j]);
+			for(j=1;j<=size(HuList[2][1]);j++){
+				fprintf(l1,"CoveringList[j]: %s ",HuList[2][1][j]);
 			}
 		}
 		if(defined(cent)){
@@ -912,7 +912,10 @@ EXAMPLE: example CopyDataInNextChartAndBlowUp; shows an example
 	
 	//TODO: Differ center == 0 (only transformation) and center != 0 case
 	list successorList;
-	
+	if (defined(HuList)){
+	print("HuList:");
+	HuList;
+	}
 	if(EqualityOfIdeal(Center,0) == 1){	//Transformation
 		print("Transformation wird durchgeführt:");
 		if(datalist[3][1] == "OneCovering"){
@@ -920,7 +923,7 @@ EXAMPLE: example CopyDataInNextChartAndBlowUp; shows an example
 		}else{	
 			successorList = generateCovering(datalist,chartnumber);
 		}
-		print(sucessorList);
+		print(successorList);
 	}else{	
 		successorList = blowUp3(W,Center);	
 		int number_center_components = size(successorList);
@@ -1167,14 +1170,24 @@ proc generateCovering(list datalist, int chartnumber){
 	ring old_r = basering;
 	int n = nvars(basering);
 	matrix M = datalist[2];
+	int numcols = ncols(M);
+	int numrows = nrows(M);
 	ideal I = generateListsimlocmon(M);
 	
 	list L1;
 	list simlocmon = ListForHU(M);
+	print("HuList:");
+	HuList;
 	for (i=1; i<= size(HuList[2]);i++){
 		L1[i] = list();
-		L1[i][1] = HuList[2][i];
-		//TODO: Woher kommt L1[i][2]???
+		L1[i][1] = HuList[2][i][1];
+	}
+	for (i=1; i <= size(HuList[2]);i++){
+		L1[i][2] = HuList[2][i][2];
+	}
+
+	if(size(HuList)<3){
+		HuList[3] = list();
 	}
 
 	//First add exceptional divisors then add x_i+_ci, where c_i = 0,1 or -1
@@ -1246,38 +1259,96 @@ proc generateCovering(list datalist, int chartnumber){
 //First saturate then apply transformation of variables
 		
 		execute("ring new_r=("+charstr(basering)+"),(t(1..n)),(dp(n));");
+		
+
+		
 		setring(old_r);
-		map f =(new_r,normcrossideal);
+		print("parametersystem:");
+		normcrossideal;
+		map f = new_r,normcrossideal;
 		//saturation:
-		datalist[1] =  sat(datalist[1],complementideal)[1];
+		
+
+		for(i=1;i<=size(datalist[1]);i++){
+			datalist[1][i] =  sat(ideal(datalist[1][i]),complementideal)[1];
+		}
 		//datalist[2] =  sat(datalist[2],I)[1];
 		//TODO: Matrix abbilden; Nachrechnen!!!
+		//TODO: weak transform
+		ideal eD = complementideal;
+		export(eD);
+		print("vorher:");
+		print(M);
+		//M = weakTransformOfMatrix(M);
+		for(i=1;i<=nrows(M);i++){
+			for(j=1;j<=ncols(M);j++){
+				M[i,j] = sat(ideal(M[i,j]),complementideal)[1];
+			}
+		}
+		print("nachher:");
+		print(M);
 		//datalist[3] =  sat(datalist[3],I)[1];
-		datalist[4] =  sat(datalist[4],complementideal)[1];						
-		datalist[5] =  sat(datalist[5],complementideal)[1];	
-		
+		for(i=1;i<=size(datalist[4]);i++){
+			datalist[4][i] =  sat(ideal(datalist[4][i]),complementideal)[1];						
+		}
+		datalist[5] =  sat(datalist[5],complementideal)[1];
 		//transformation:
+		ideal ambientspace = datalist[1];
+		matrix m = datalist[2];
+		list E = datalist[4];
+		ideal abb = datalist[5];
+		
+		for(i=1;i<=nrows(M);i++){
+			for(j=1;j<=ncols(M);j++){
+				if(defined(dummy)){
+					kill(dummy);
+				}
+				ideal dummy = M[i,j];
+				setring(new_r);
+				if(!defined(m)){
+					matrix m[numrows][numcols];
+				}
+				m[i,j] = preimage(old_r,f,dummy);
+				setring(old_r);
+			}
+		}
+		
+		for(j=1;j<=size(E);j++){
+			if(defined(dummy)){
+				kill(dummy);
+			}
+			ideal dummy = E[j];
+			setring(new_r);
+			if(!defined(E)){
+				list E;
+			}
+			E[j] = preimage(old_r,f,dummy);
+			setring(old_r);
+		}
 		setring(new_r);
+		
 		list datalist;
-		datalist[1] = preimage(old_r,f,datalist[1]);
-		datalist[2] = preimage(old_r,f,datalist[2]);
-		datalist[3] = preimage(old_r,f,datalist[3]);
-		datalist[4] = preimage(old_r,f,datalist[4]);
-		datalist[5] = preimage(old_r,f,datalist[5]);
-		datalist[6] = preimage(old_r,f,datalist[6]);
+		datalist[2] = m;
+		print(m);
+		~;
+		datalist[1] = preimage(old_r,f,ambientspace);
+		datalist[5] = preimage(old_r,f,abb);
+		//datalist[6] = preimage(old_r,f,datalist[6]);
 		module path = fetch(old_r,path);
 		path=path,[chartnumber,member];
 		
+		list dummy = fetch(old_r,datalist);
+		datalist[3] = dummy[3];
 		export(datalist);
 		export(path);
 		//ist das alles?
 		
-		
-		
-		setring(r_old);
+		setring(old_r);
 		successorlist[size(successorlist)+1] = new_r;
 	}
-	
+	print("nachfolgekarten:");
+	print(size(successorlist));
+	successorlist;
 	return(successorlist);
 }
 
@@ -1307,7 +1378,7 @@ proc AddComponentToSystemOfParameters(list parametersystem, list complement){
 	int i,j,k; 
 	int n = nvars(basering);
 	if(size(parametersystem) == n){
-		return(L);
+		return(parametersystem);
 	}
 	
 	
@@ -1331,24 +1402,26 @@ proc AddComponentToSystemOfParameters(list parametersystem, list complement){
 	//via bruteforce
 	for(i=1; i<=n; i++){
 		contained = 0;
-		for(j=1; j<= size(L[1]); j++){
-			if(var(i) == L[1][j]){
+		for(j=1; j<= size(parametersystem); j++){
+			if(var(i) == parametersystem[j]){
 				contained = 1;
 			}
 		}
 		//check  whether it intersects the parametersystem in the right point and lives in the complement
 		//var
 		if(contained == 0){
-			tmplistideal = listideal + var(i); 
-			if(EqualityOfIdeal(tmplistideal,1) == 0){
-				if (size(reduce(1,std(complementideal+tmplistideal))) == 0) { 	// complementideal cap tmplistideal = empty set
-					//Add var(i)+1 to list of parametersystems!
-					listideal = tmplistideal;
-					parametersystem[size(parametersystem)+1] = var(i);
-					i++;
-					continue;
+			//if(ContainedInLocallyMonomial(var(i),complementideal) == 0){
+				tmplistideal = listideal + var(i); 
+				if(EqualityOfIdeal(tmplistideal,1) == 0){
+					if (size(reduce(1,std(complementideal+tmplistideal))) == 0) { 	// complementideal cap tmplistideal = empty set
+						//Add var(i) to list of parametersystems!
+						listideal = tmplistideal;
+						parametersystem[size(parametersystem)+1] = var(i);
+						i++;
+						continue;
+					}
 				}
-			}
+			//}
 		}
 		
 		
@@ -1370,7 +1443,7 @@ proc AddComponentToSystemOfParameters(list parametersystem, list complement){
 			tmplistideal = listideal + (var(i)-1); 
 			if(EqualityOfIdeal(tmplistideal,1) == 0){
 				if (size(reduce(1,std(complementideal+tmplistideal))) == 0) { 	// complementideal cap tmplistideal = empty set
-					//Add var(i)+1 to list of parametersystems!
+					//Add var(i)-1 to list of parametersystems!
 					listideal = tmplistideal;
 					parametersystem[size(parametersystem)+1] = var(i)+1;
 					i++;
@@ -1391,7 +1464,27 @@ proc AddComponentToSystemOfParameters(list parametersystem, list complement){
 	
 	return(parametersystem);
 }
+//----------------------------------------------------------------------
 
+proc ContainedInLocallyMonomial(poly v,ideal complementideal){
+	int i,j,k;
+	int contained = 0;
+	
+	for(i=1;i<=size(complementideal);i++){
+		if(size(complementideal[i]) == 2){
+			if(complementideal[i][1] == 1 or complementideal[i][1] == -1){
+				if((complementideal[i][2]/ v) != 0){
+					return(1);
+				}
+			}else{
+				if((complementideal[i][1]/ v) != 0){
+					return(1);
+				}
+			}
+		}
+	}
+	return(contained);
+}
 
 
 
