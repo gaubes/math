@@ -30,34 +30,54 @@ EXAMPLE: example HuAlgorithm; shows an example
 	list L;
 	L = ListForHU(M);
 	list IntersectionLattice = HuCalc(L);
-	
+	print("L");
 	print(L);
 	//TODO:
 	// store relative extremal components for the later covering:
-	list coveringlist = IntersectionLattice[size(IntersectionLattice)];
-
-
+	//list coveringlist = IntersectionLattice[size(IntersectionLattice)];
+	list coveringlist = IntersectionLattice[2];
 
 	list CoveringAndComponentList;
-	for(i=1;i<=size(coveringlist);i++){
-		CoveringAndComponentList[i] = list();
-		CoveringAndComponentList[i][1] = coveringlist[i];
-		for(j=1;j<=size(L);j++){
+	if(size(IntersectionLattice[1][1]) == 0){
+		for(i=1;i<=size(L);i++){
+			if(size(L[i]) == 1){
+				CoveringAndComponentList[size(CoveringAndComponentList)+1] = list();
+				CoveringAndComponentList[size(CoveringAndComponentList)][1] = list(L[i]);
+				CoveringAndComponentList[size(CoveringAndComponentList)][2] = list();
+				for(j=1;j<=size(L);j++){
+					if(j!=i){
+						CoveringAndComponentList[size(CoveringAndComponentList)][2][size(CoveringAndComponentList[size(CoveringAndComponentList)][2])+1] = L[j];
+					}
+				}
+			}
+		}
+	}
+	else{
+		
+		for(i=1;i<=size(coveringlist);i++){
+			CoveringAndComponentList[i] = list();
+			CoveringAndComponentList[i][1] = coveringlist[i];
 			CoveringAndComponentList[i][2] = list();
-			if(MemberOfList(L[j], coveringlist[i]) == 0){
-				CoveringAndComponentList[i][2][size(CoveringAndComponentList[i][2])+1] = L[j];
+			for(j=1;j<=size(L);j++){
+				if(MemberOfHuList(L[j], coveringlist[i]) == 0){
+					CoveringAndComponentList[i][2][size(CoveringAndComponentList[i][2])+1] = L[j];
+					print("Daten in Hu:");
+					print(CoveringAndComponentList);
+					print(L);
+					print(coveringlist);
+				}
 			}
 		}
 	}
 	//TODO: CHANGE
-	list CoveringAndComponentList = list();
-	CoveringAndComponentList[1] = list();
-	CoveringAndComponentList[1][1] = list(y(0),y(1));
-	CoveringAndComponentList[1][2] = list(x(1)*y(0)*y(1)+1,x(1)*y(0)*y(1)-1);
+	//list CoveringAndComponentList = list();
+	//CoveringAndComponentList[1] = list();
+	//CoveringAndComponentList[1][1] = list(y(0),y(1));
+	//CoveringAndComponentList[1][2] = list(x(1)*y(0)*y(1)+1,x(1)*y(0)*y(1)-1);
 
 
 	//-----------------------
-	return(list(IntersectionLattice,CoveringAndComponentList));
+	return(list(IntersectionLattice[1],CoveringAndComponentList));
 }
 example
 { 	ring r = 0,(x,y),dp;
@@ -132,17 +152,18 @@ EXAMPLE: example HuCalc; shows an example
 {
 	list IntersectionLattice = CalculateIntersectionLattice(L);
 	list Centerlist = list();
-	int level = size(IntersectionLattice);
+	int level = size(IntersectionLattice[1]);
 	int i, j, k;
 
 	//Init Data structure and CenterList:
 	for(i =1;i<=level; i++){
 		Centerlist[i] = list();
-		for(j=1;j<=size(IntersectionLattice[i]);j++ ){
-			Centerlist[i][j] = CalculateIntersectionLatticeIdeal(IntersectionLattice[i][j]);	 
+		for(j=1;j<=size(IntersectionLattice[1][i]);j++ ){
+			Centerlist[i][j] = CalculateIntersectionLatticeIdeal(IntersectionLattice[1][i][j]);	 
 		}
 	}
-	return(Centerlist);
+	list coveringlist = IntersectionLattice[2];
+	return(list(Centerlist,coveringlist));
 }example
 { "EXAMPLE:"; echo = 2;
 	ring r = 0,(x,y),dp;
@@ -275,7 +296,7 @@ EXAMPLE: example CalculateIntersectionLattice; shows an example
 				//print("Lösche letztes IntersectionLattice element");
 				//print(IntersectionLattice);
 				//print("------------");
-				//IntersectionLattice = delete(IntersectionLattice,size(IntersectionLattice));
+				IntersectionLattice = delete(IntersectionLattice,size(IntersectionLattice));
 				//print("Letztes element gelöscht:");
 				//print(IntersectionLattice);
 				//print("------------");
@@ -286,6 +307,11 @@ EXAMPLE: example CalculateIntersectionLattice; shows an example
 
 	
 	//TODO: calculate coveringlist!
+	list coveringlist;
+	if(size(IntersectionLattice)>=2){
+		coveringlist = IntersectionLattice[2];
+	}	
+
 
 	//Delete superfluent components with less or equal n Elements
 	for(i=1;i<=n;i++){
@@ -314,7 +340,7 @@ EXAMPLE: example CalculateIntersectionLattice; shows an example
 		}
 	}
 
-	return(IntersectionLattice);
+	return(list(IntersectionLattice,coveringlist));
 }example
 { "EXAMPLE:"; echo = 2;
 	ring r = 0,(x,y,z),dp;
@@ -412,4 +438,21 @@ EXAMPLE: example removeDuplicates; shows an example
 	ring r = 0,(x,y),dp;
 	list L = list(x-1,y-1,xy-1,1,xy-1,1);
 	removeDuplicates(L);
+}
+
+
+proc MemberOfHuList( poly f, list L)
+"USAGE: MemberOfHuList(poly f, list L); f poly, L list 
+RETURN:1 if f is member of L, 0 otherwise
+EXAMPLE: example MemberOfList; shows an example
+"
+{
+	int length = size(L);
+	int i;
+	for(i = 1; i <= length; i++) {
+		if(L[i] == f) {
+			return(1);
+		}
+	}
+	return(0);
 }

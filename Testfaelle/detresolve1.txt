@@ -1,0 +1,422 @@
+Chartnumber: 1
+matrix: -y2z2+x2,x3,
+y4,      z2  
+state: binresol 
+Minorsize: 2 
+datalist[4]: %s 
+BO: 
+BO[1]: 0 
+BO[2]: y2z2-x2 
+BO[3]: 2,4 
+BO[4]: %s 
+BO[5]: x,y,z 
+BO[6]: 0 
+BO[7]: 0,0 
+HuList  
+center: z,y,x 
+path:
+0,
+-1
+
+Chartnumber: 2
+matrix: -x(3)^2*y(1)^2+y(2)^2,x(3)*y(2)^3,
+x(3)^2*y(1)^4,        1            
+state: binresol 
+Minorsize: 2 
+datalist[4]: x(3) 
+BO: 
+BO[1]: 0 
+BO[2]: x(3)^2*y(1)^2-y(2)^2 
+BO[3]: 2,2 
+BO[4]: x(3) 
+BO[5]: x(3)*y(2),x(3)*y(1),x(3) 
+BO[6]: 0 
+BO[7]: 0,1 
+HuList  
+center: y(2),y(1),x(3) 
+path:
+0, 1,
+-1,1 
+
+Chartnumber: 3
+matrix: -x(2)^2*y(0)^2+y(2)^2,x(2)*y(2)^3,
+x(2)^2,               y(0)^2       
+state: binresol 
+Minorsize: 2 
+datalist[4]: x(2) 
+BO: 
+BO[1]: 0 
+BO[2]: x(2)^2*y(0)^2-y(2)^2 
+BO[3]: 2,2 
+BO[4]: x(2) 
+BO[5]: x(2)*y(2),x(2),x(2)*y(0) 
+BO[6]: 0 
+BO[7]: 0,1 
+HuList  
+center: y(2),y(0),x(2) 
+path:
+0, 1,
+-1,2 
+
+Chartnumber: 4
+matrix: -x(1)^2*y(0)^2*y(1)^2+1,x(1), 
+x(1)^2*y(1)^4,          y(0)^2 
+state: transformation 
+Minorsize: 2 
+datalist[4]: x(1) 
+HuList  
+center: 0 
+path:
+0, 1,
+-1,3 
+
+Chartnumber: 5
+matrix: -x(3)^2*y(1)^2*y(2)^2+1,x(3)^2*y(2),
+x(3)^6*y(1)^4*y(2)^2,   1            
+state: transformation 
+Minorsize: 2 
+datalist[4]: x(3)*y(2) 
+HuList  
+center: 0 
+path:
+0, 1,2,
+-1,1,1 
+
+Chartnumber: 6
+matrix: -x(2)^2*y(2)^2+y(0)^2,x(2)^2*y(0)^3*y(2),
+x(2)^6*y(2)^2,        1                   
+state: binresol 
+Minorsize: 2 
+datalist[4]: x(2)*y(2) 
+BO: 
+BO[1]: 0 
+BO[2]: x(2)^2*y(2)^2-y(0)^2 
+BO[3]: 2,0 
+BO[4]: y(2) 
+BO[5]: x(2)*y(2),x(2),x(2)*y(0) 
+BO[6]: 0 
+BO[7]: 0,2 
+HuList  
+center: y(0),x(2) 
+path:
+0, 1,2,
+-1,1,2 
+
+Chartnumber: 7
+matrix: -x(1)^2*y(1)^2+y(0)^2,x(1)^2*y(0)^3,
+x(1)^6*y(1)^4,        1              
+state: binresol 
+Minorsize: 2 
+datalist[4]: x(1) 
+BO: 
+BO[1]: 0 
+BO[2]: x(1)^2*y(1)^2-y(0)^2 
+BO[3]: 2,2 
+BO[4]: 1 
+BO[5]: x(1),x(1)*y(1),x(1)*y(0) 
+BO[6]: 0 
+BO[7]: 0,1 
+HuList  
+center: y(1),y(0) 
+path:
+0, 1,2,
+-1,1,3 
+
+Chartnumber: 8
+matrix: -x(3)^2*y(1)^2*y(2)^2+1,x(3)^2*y(2),
+y(2)^2,                 y(1)^2       
+state: transformation 
+Minorsize: 2 
+datalist[4]: x(3)*y(2) 
+HuList  
+center: 0 
+path:
+0, 1,3,
+-1,2,1 
+
+Chartnumber: 9
+matrix: -x(2)^2*y(2)^2+y(0)^2,x(2)^2*y(0)^3*y(2),
+y(2)^2,               1                   
+state: binresol 
+Minorsize: 2 
+datalist[4]: x(2)*y(2) 
+BO: 
+BO[1]: 0 
+BO[2]: x(2)^2*y(2)^2-y(0)^2 
+BO[3]: 2,0 
+BO[4]: y(2) 
+BO[5]: x(2)*y(2),x(2),x(2)*y(0) 
+BO[6]: 0 
+BO[7]: 0,2 
+HuList  
+center: y(0),x(2) 
+path:
+0, 1,3,
+-1,2,2 
+
+Chartnumber: 10
+matrix: -x(1)^2*y(1)^2+y(0)^2,x(1)^2*y(0)^3,
+1,                    y(1)^2         
+state: binresol 
+Minorsize: 2 
+datalist[4]: x(1) 
+BO: 
+BO[1]: 0 
+BO[2]: x(1)^2*y(1)^2-y(0)^2 
+BO[3]: 2,2 
+BO[4]: 1 
+BO[5]: x(1),x(1)*y(1),x(1)*y(0) 
+BO[6]: 0 
+BO[7]: 0,1 
+HuList  
+center: y(1),y(0) 
+path:
+0, 1,3,
+-1,2,3 
+
+Chartnumber: 11
+matrix: 1,            t(3), 
+t(1)^4*t(3)^2,t(2)^2 
+state: binresol 
+Minorsize: 1 
+datalist[4]: t(3) 
+BO: 
+BO[1]: 0 
+BO[2]: t(1)^4*t(3)^3-t(2)^2 
+BO[3]: 2,7 
+BO[4]: %s 
+BO[5]: t(1),t(2),t(3) 
+BO[6]: 0 
+BO[7]: 0,0 
+HuList  
+center: t(3),t(2),t(1) 
+path:
+0, 1,4,
+-1,3,1 
+
+Chartnumber: 12
+matrix: -x(3)^2*y(1)^2+1,    x(2)^3*x(3)*y(1)^2,
+x(2)^6*x(3)^2*y(1)^6,1                   
+state: transformation 
+Minorsize: 2 
+datalist[4]: x(2)*x(3)*y(1) 
+HuList  
+center: 0 
+path:
+0, 1,2,6,
+-1,1,2,1 
+
+Chartnumber: 13
+matrix: -x(3)^2+y(0)^2,x(1)^3*x(3)*y(0)^3,
+x(1)^6*x(3)^2, 1                   
+state: binresol 
+Minorsize: 2 
+datalist[4]: x(1)*x(3) 
+BO: 
+BO[1]: 0 
+BO[2]: x(3)^2-y(0)^2 
+BO[3]: 2 
+BO[4]: x(3) 
+BO[5]: x(1),x(1)*y(0),x(3) 
+BO[6]: 0 
+BO[7]: 0 
+HuList  
+center: y(0),x(3) 
+path:
+0, 1,2,6,
+-1,1,2,2 
+
+Chartnumber: 14
+matrix: -x(1)^2+y(1)^2,x(1)^2*x(3)*y(1)^3,
+x(1)^6*x(3)^4, 1                   
+state: binresol 
+Minorsize: 2 
+datalist[4]: x(1) 
+BO: 
+BO[1]: 0 
+BO[2]: x(1)^2-y(1)^2 
+BO[3]: 2 
+BO[4]: 1 
+BO[5]: x(1),x(3)*y(1),x(3) 
+BO[6]: 0 
+BO[7]: 0 
+HuList  
+center: y(1),x(1) 
+path:
+0, 1,2,7,
+-1,1,3,1 
+
+Chartnumber: 15
+matrix: -x(1)^2*y(0)^2+1,    x(1)^2*x(2),
+x(1)^6*x(2)^4*y(0)^4,1            
+state: transformation 
+Minorsize: 2 
+datalist[4]: x(1) 
+HuList  
+center: 0 
+path:
+0, 1,2,7,
+-1,1,3,2 
+
+Chartnumber: 16
+matrix: -x(3)^2*y(1)^2+1,x(2)^3*x(3)*y(1)^2,
+x(3)^2,          1                   
+state: transformation 
+Minorsize: 2 
+datalist[4]: x(2)*x(3)*y(1) 
+HuList  
+center: 0 
+path:
+0, 1,3,9,
+-1,2,2,1 
+
+Chartnumber: 17
+matrix: -x(3)^2+y(0)^2,x(1)^3*x(3)*y(0)^3,
+x(3)^2,        1                   
+state: binresol 
+Minorsize: 2 
+datalist[4]: x(1)*x(3) 
+BO: 
+BO[1]: 0 
+BO[2]: x(3)^2-y(0)^2 
+BO[3]: 2 
+BO[4]: x(3) 
+BO[5]: x(1),x(1)*y(0),x(3) 
+BO[6]: 0 
+BO[7]: 0 
+HuList  
+center: y(0),x(3) 
+path:
+0, 1,3,9,
+-1,2,2,2 
+
+Chartnumber: 18
+matrix: -x(1)^2+y(1)^2,x(1)^2*y(1)^3,
+1,             x(3)           
+state: binresol 
+Minorsize: 2 
+datalist[4]: x(1) 
+BO: 
+BO[1]: 0 
+BO[2]: x(1)^2-y(1)^2 
+BO[3]: 2 
+BO[4]: 1 
+BO[5]: x(1),x(3)*y(1),x(3) 
+BO[6]: 0 
+BO[7]: 0 
+HuList  
+center: y(1),x(1) 
+path:
+0, 1,3,10,
+-1,2,3,1  
+
+Chartnumber: 19
+matrix: -x(1)^2*y(0)^2+1,x(1)^2,    
+1,               x(2)*y(0)^2 
+state: transformation 
+Minorsize: 2 
+datalist[4]: x(1) 
+HuList  
+center: 0 
+path:
+0, 1,3,10,
+-1,2,3,2  
+
+Chartnumber: 20
+matrix: -y(1)^2+1,           x(1)^3*x(3)^2*y(1),
+x(1)^6*x(3)^2*y(1)^2,1                   
+state: transformation 
+Minorsize: 2 
+datalist[4]: x(1)*x(3)*y(1) 
+HuList  
+center: 0 
+path:
+0, 1,2,6,13,
+-1,1,2,2,1  
+
+Chartnumber: 21
+matrix: y(0)^2-1,     x(1)^3*x(2)^2*y(0)^3,
+x(1)^6*x(2)^2,1                     
+state: transformation 
+Minorsize: 2 
+datalist[4]: x(1)*x(2) 
+HuList  
+center: 0 
+path:
+0, 1,2,6,13,
+-1,1,2,2,2  
+
+Chartnumber: 22
+matrix: -y(1)^2+1,           x(2)*x(3)^3*y(1)^2,
+x(2)^4*x(3)^6*y(1)^6,1                   
+state: transformation 
+Minorsize: 2 
+datalist[4]: x(3)*y(1) 
+HuList  
+center: 0 
+path:
+0, 1,2,7,14,
+-1,1,3,1,1  
+
+Chartnumber: 23
+matrix: y(0)^2-1,     x(1)^3*x(2)*y(0)^3,
+x(1)^6*x(2)^4,1                   
+state: transformation 
+Minorsize: 2 
+datalist[4]: x(1) 
+HuList  
+center: 0 
+path:
+0, 1,2,7,14,
+-1,1,3,1,2  
+
+Chartnumber: 24
+matrix: -y(1)^2+1,    x(1)^3*x(3)^2*y(1),
+x(3)^2*y(1)^2,1                   
+state: transformation 
+Minorsize: 2 
+datalist[4]: x(1)*x(3)*y(1) 
+HuList  
+center: 0 
+path:
+0, 1,3,9,17,
+-1,2,2,2,1  
+
+Chartnumber: 25
+matrix: y(0)^2-1,x(1)^3*x(2)^2*y(0)^3,
+x(2)^2,  1                     
+state: transformation 
+Minorsize: 2 
+datalist[4]: x(1)*x(2) 
+HuList  
+center: 0 
+path:
+0, 1,3,9,17,
+-1,2,2,2,2  
+
+Chartnumber: 26
+matrix: -y(1)^2+1,x(3)^3*y(1)^2,
+1,        x(2)           
+state: transformation 
+Minorsize: 2 
+datalist[4]: x(3)*y(1) 
+HuList  
+center: 0 
+path:
+0, 1,3,10,18,
+-1,2,3,1, 1  
+
+Chartnumber: 27
+matrix: y(0)^2-1,x(1)^3*y(0)^3,
+1,       x(2)           
+state: transformation 
+Minorsize: 2 
+datalist[4]: x(1) 
+HuList  
+center: 0 
+path:
+0, 1,3,10,18,
+-1,2,3,1, 2  
+
+Number of total charts: 27
+Number of end charts: 11
