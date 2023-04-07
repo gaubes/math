@@ -32,9 +32,8 @@ EXAMPLE: example HuAlgorithm; shows an example
 	list IntersectionLattice = HuCalc(L);
 	print("L");
 	print(L);
-	//TODO:
+
 	// store relative extremal components for the later covering:
-	//list coveringlist = IntersectionLattice[size(IntersectionLattice)];
 	list coveringlist = IntersectionLattice[2];
 
 	list CoveringAndComponentList;
@@ -163,6 +162,9 @@ EXAMPLE: example HuCalc; shows an example
 		}
 	}
 	list coveringlist = IntersectionLattice[2];
+	
+	
+	
 	return(list(Centerlist,coveringlist));
 }example
 { "EXAMPLE:"; echo = 2;
@@ -289,17 +291,10 @@ EXAMPLE: example CalculateIntersectionLattice; shows an example
 		//}
 		
 		
-		//Hierwird zu viel gelöscht!!!
 		if(NotEmpty == 0 or (size(L) == i)){		//Termination
 			emptyOrOrigin = 1;
 			if(NotEmpty == 0){
-				//print("Lösche letztes IntersectionLattice element");
-				//print(IntersectionLattice);
-				//print("------------");
 				IntersectionLattice = delete(IntersectionLattice,size(IntersectionLattice));
-				//print("Letztes element gelöscht:");
-				//print(IntersectionLattice);
-				//print("------------");
 			}
 		}	
 		i++;
@@ -308,8 +303,27 @@ EXAMPLE: example CalculateIntersectionLattice; shows an example
 	
 	//TODO: calculate coveringlist!
 	list coveringlist;
-	if(size(IntersectionLattice)>=2){
-		coveringlist = IntersectionLattice[2];
+	int contained;
+	for(i=n; i>1; i--){
+		if(size(IntersectionLattice)>=i){
+			for(j=1;j<=size(IntersectionLattice[i]);j++){
+				//top level components:
+				contained = 0;
+				if(i==n){
+					coveringlist[j] = IntersectionLattice[i][j];
+				} //find relative extremal components:
+				else{
+					for(k=1;k<=size(coveringlist);k++){
+						if(isSubList(IntersectionLattice[i][j],covering[k])){
+							contained = 1;
+						}
+					}
+					if(contained == 0){
+						coveringlist[size(coveringlist)+1] = IntersectionLattice[i][j];
+					}
+				}
+			}
+		}
 	}	
 
 
@@ -455,4 +469,22 @@ EXAMPLE: example MemberOfList; shows an example
 		}
 	}
 	return(0);
+}
+
+proc isSubList(list subL; list L){
+	int i,j,k;
+	int contained = 0;
+	
+	for(i=1;i<= size(subL);i++){
+		contained = 0;
+		for(j=1;j<=size(L);j++){
+			if(subL[i] == L[j]){
+				contained = 1;
+			}
+		}
+		if(contained == 0){
+			return(0);
+		}
+	}
+	return(1);
 }

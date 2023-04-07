@@ -207,10 +207,10 @@ proc print_determinantal_resolve(matrix M , int sizeOfMinor){
 	//M[2,1] = y^4;
 	//M[2,2] = z^2;
 	
-	M[1,1] = x^2-y^2*z^2;
-	M[1,2] = x^3;
-	M[2,1] = y^4;
-	M[2,2] = z^2;
+	M[1,1] = x^3;
+	M[1,2] = x^2-y^4*z^4;
+	M[2,1] = x-y;
+	M[2,2] = z^2*x^3-y^4;
 	print_determinantal_resolve(M,2);	
 }
 
@@ -476,23 +476,24 @@ proc determinantal_resolve(matrix M, int sizeOfMinor){
 		kill(rnew);
 	}
 	
-	return(EndCharts,BlowUpTree);
+	return(EndCharts,BlowUpTree, size(EndCharts), size(BlowUpTree));
 }example{
-	//ring r = 0,(x(1..9)),dp;
-	//matrix M = skewmat(6);
+	ring r = 0,(x(1..9)),dp;
+	matrix M = skewmat(4);
 	//matrix M = genericmat(3,3);
 	//ring r = 0,(x,y,z),dp;
-	ring r = 0,(x(1..4)),dp;
-	matrix M = genericmat(2,2);
-	M[1,1] = x(1)^2*x(2);
-	M[1,2] = x(2)^3;
-	M[2,1] = x(3)^2;
-	M[2,2] = x(3)*x(4)*x(2);
+	//ring r = 0,(x(1..4)),dp;
+	//matrix M = symmat(3);
+	//M[1,1] = x(1)^2*x(2);
+	//M[1,2] = x(2)^3;
+	//M[2,1] = x(3)^2;
+	//M[2,2] = x(3)*x(4)*x(2);
 	//M[1,1] = x^2-y^2*z^2;
-	//M[1,2] = x^3;
+	//M[1,1] = x^3;
+	//M[1,2] = x^2-y^4*z^4;
 	//M[2,1] = y^4;
 	//M[2,2] = z^2;
-	determinantal_resolve(M,2);
+	determinantal_resolve(M,4);
 }
 //----------------------------------------------------------------------
 
@@ -864,6 +865,8 @@ EXAMPLE: example CreateBinomialFromMonomialMatrix; shows an example
 	//TODO: fetch whole datalist
 	ideal tmpideal = fetch(r,tmpideal);
 	ideal retideal;
+	
+	
 	for(i=1;i<=idealsize;i++){
 		retideal[i] = var(n+i)^d + tmpideal[i];			// J = <y_{2l}^{d-1}y_{2l+1} + x^{A_l}>, but we want to start with y_1 instead of y_2 
 	}
