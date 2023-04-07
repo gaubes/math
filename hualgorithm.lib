@@ -314,7 +314,7 @@ EXAMPLE: example CalculateIntersectionLattice; shows an example
 				} //find relative extremal components:
 				else{
 					for(k=1;k<=size(coveringlist);k++){
-						if(isSubList(IntersectionLattice[i][j],covering[k])){
+						if(isSubList(IntersectionLattice[i][j],coveringlist[k])){
 							contained = 1;
 						}
 					}
@@ -471,7 +471,7 @@ EXAMPLE: example MemberOfList; shows an example
 	return(0);
 }
 
-proc isSubList(list subL; list L){
+proc isSubList(list subL, list L){
 	int i,j,k;
 	int contained = 0;
 	
