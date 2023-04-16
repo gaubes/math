@@ -1,8 +1,0 @@
-ring r = 0,(x,y,z,w),dp;
-list L = list(ideal(z2-x2y2),ideal(x2-z5), ideal (z2w2-x2y2));
-
-ideal J = z2-x2y2;
-
-J = z3-x2y2;
-
-J = z2w2-x2y2;

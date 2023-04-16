@@ -30,8 +30,6 @@ EXAMPLE: example HuAlgorithm; shows an example
 	list L;
 	L = ListForHU(M);
 	list IntersectionLattice = HuCalc(L);
-	print("L");
-	print(L);
 
 	// store relative extremal components for the later covering:
 	list coveringlist = IntersectionLattice[2];
@@ -60,19 +58,10 @@ EXAMPLE: example HuAlgorithm; shows an example
 			for(j=1;j<=size(L);j++){
 				if(MemberOfHuList(L[j], coveringlist[i]) == 0){
 					CoveringAndComponentList[i][2][size(CoveringAndComponentList[i][2])+1] = L[j];
-					print("Daten in Hu:");
-					print(CoveringAndComponentList);
-					print(L);
-					print(coveringlist);
 				}
 			}
 		}
 	}
-	//TODO: CHANGE
-	//list CoveringAndComponentList = list();
-	//CoveringAndComponentList[1] = list();
-	//CoveringAndComponentList[1][1] = list(y(0),y(1));
-	//CoveringAndComponentList[1][2] = list(x(1)*y(0)*y(1)+1,x(1)*y(0)*y(1)-1);
 
 
 	//-----------------------
@@ -128,8 +117,7 @@ EXAMPLE: example ListForHU; shows an example
 			}
 		}
 	} 
-	//print("HuListe");
-	//print(L);
+
 	return(L);											
 }
 example
@@ -215,8 +203,6 @@ EXAMPLE: example CalculateIntersectionLattice; shows an example
 		sizeMinAss = size(MinAss);
 		if(sizeMinAss > 1){
 			L[j] = poly(MinAss[1][1]);
-			//print("MinAss");
-			//print(MinAss);
 			for(k=2; k<=sizeMinAss; k++){
 				L[size(L)+1] = poly(MinAss[k][1]);
 			}
@@ -272,23 +258,17 @@ EXAMPLE: example CalculateIntersectionLattice; shows an example
 				//delete empty ideal
 				IntersectionLattice[i] = delete(IntersectionLattice[i],current_size);
 				EmptySubsetIndices[size(EmptySubsetIndices)+1] = SubsetList[j];
-				
-				//finding relative extremal components:
-				//TODO:										
+									
 			}
 			
 		}
-		//j--;								// else: out of range
-		//IntersectionLatticeIdeal = CalculateIntersectionLatticeIdeal(IntersectionLattice[i][j]);
-		//if(EqualityOfIdeal(IntersectionLatticeIdeal,1) == 0){
+
 		if(size(IntersectionLattice[i]) > 0){
-			//print("Set not empty");
-			//print(IntersectionLattice);
-			//print(i);
+
 			NotEmpty = 1;
 		}
 		
-		//}
+
 		
 		
 		if(NotEmpty == 0 or (size(L) == i)){		//Termination
@@ -301,7 +281,6 @@ EXAMPLE: example CalculateIntersectionLattice; shows an example
 	}
 
 	
-	//TODO: calculate coveringlist!
 	list coveringlist;
 	int contained;
 	for(i=n; i>1; i--){
@@ -341,9 +320,6 @@ EXAMPLE: example CalculateIntersectionLattice; shows an example
 	}
 	
 	list EmptyList = list();
-	//print(IntersectionLattice);
-	//print("Lösche emtpylists aus Hu");
-	
 	
 	// A single empty list at the beginning is enough!
 	for(i=1;i<n;i++){

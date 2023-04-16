@@ -427,58 +427,7 @@ example
 ///////////////////////////////////////////////////////////////////////////////
 
 
-///////////////////////////////////////////////////////////////////////////////
-proc determinantial_cjs(matrix M){
-	int cols = ncols(M);
-	int rows = nrows(M);
-	int mindim = min(cols,rows);
-	
-	
-	
-	int i; int j; int k; int l;
-	int col_of_one;
-	int row_of_one;
-	intvec rowvec; 
-	intvec colvec;
-	//forschleife über alle karten
-	
-	//ringwechsel...
-	
-	// TODO col und row der 1-position lesen
-	rowred(M);
-	//TODO local monomialization
-	
-	//ggf. fallunterscheidung wenn 1 am rand
-	rows = nrows(M);
-	cols = ncols(M);
-	rowvec = 1..row_of_one-1,row_of_one..rows; 
-	colvec = 1..col_of_one-1,col_of_one..cols; 
 
-	matrix Msub = (M,rowvec,colvex);
-	rows = nrows(Msub);
-	cols = ncols(Msub);
-	mindim = min(cols,rows);
-	
-	if(mindim == 2){
-		ideal Minor = minor(M,mindim);
-		return(Minor);						//TODO ersetzen durch binomial_cjs bzw input anpassen oder methode kopieren um sie hier anzuschliessen
-	}
-	
-	//compute Center for blowup
-	ideal Center = 0;
-	for(k=1;  k<= rows; k++){
-		for(l=1; l<= cols;l++){
-			Center = Center + M[k,l];	
-		}
-	}
-	
-	//blow up 
-	
-	//ende der forschleife über alle karten
-}
-
-
-///////////////////////////////////////////////////////////////////////////////
 
 
 ///////////////////////////////////////////////////////////////////////////////
@@ -503,7 +452,6 @@ EXAMPLE : binomial_cjs; shows an example
 	if(size(#)>0){
 		if(typeof(#[1]) == "ideal"){
 			IZ = #[1];
-	//TODO: Pruefen ob IZ als Ambient space zulaessig ist!
 		}
 	}
 	
@@ -555,44 +503,13 @@ EXAMPLE : binomial_cjs; shows an example
 	boundary = towerRetList[3];
 	L = L + CopiesOfCharts(1,mode); 			//automatically blownup
 		
-		//fprintf(l1,"Chartnumber: %s",1);
-		//fprintf(l1,"transform IZ: %s ",IZ);
-		//fprintf(l1,"transform IX: %s ",mstd(IX)[2]);
-		//fprintf(l1,"transform IX: %s ",IX);
 		
-		//fprintf(l1,"descending IZ: %s ",descended_IZ);
-		if(defined(boundary)){
-			//fprintf(l1,"boundarylist: %s ",boundary);
-		}
-		if(defined(Center_of_this_chart)){
-			//fprintf(l1,"Center: %s ",Center_of_this_chart);
-		}
-		if(defined(Centerideal)){
-			//fprintf(l1,"image of center: %s ",Centerideal);
-		}
-		//fprintf(l1,"lastmap: %s ",last_map);
-		//fprintf(l1,"totalmap: %s ",total_map);
-		//fprintf(l1,"path:");
-		//fprintf(l1,"%p",matrix(path));
-		if(defined(tower)){
-			if(size(tower)>0){
-			//	fprintf(l1,"tower: %s ",string(tower));
-			}
-		}
-		if(defined(MaxIX)){
-			//fprintf(l1,"invariant: %s ",string(MaxIX[1]));
-			//fprintf(l1,"MaxIX-locus: %s", string(MaxIX[2]));
-		}
-		//fprintf(l1,"");
 	for(i = 2; i <= size(L);i++){									// CJS in every chart, loop of all charts
 		
 		if(defined(actual_chart)){kill actual_chart;} 
 		def actual_chart = L[i];
 		setring(actual_chart);
 
-		//sprintf("Chart:%s of %s",i,size(L));
-		//show_actual_chart();
-		//if( i == 25 or i == 35){~;}
 		
 		if(EqualityOfIdeal(IX,1) == 1){								//obviously an endchart 			
 			CounterEndCharts++;
@@ -606,14 +523,9 @@ EXAMPLE : binomial_cjs; shows an example
 		if(size(MaxIX[2]) == 0){
 			invariant[1] = delete(invariant[1], size(invariant[1])); 		// delete dummy-variable in invariant[1], in order to be able to store it in the ring 
 			MaxIX[1] = invariant;
-	//		MaxOrdRetList = list();
-	//	}else{
-	//		MaxOrdRetList = MaxIX[3];
 		}
 		ideal last_Center = Centerideal;				
-		//IX = ChangeListForSTDCalculation()[1];
-		//MaxIX = ChangeListForSTDCalculation()[2];
-		elimparts_in_IX(i);											//necessary? //rückgabe mindestens boolean 
+		elimparts_in_IX(i);											
 
 		//if a level of boundarylist is empty 
 		if(size(boundary) == 0){
@@ -629,14 +541,8 @@ EXAMPLE : binomial_cjs; shows an example
 			invariant = delete(invariant,k);
 		}
 		
-		//if(i == 7 ){~;}
-	//	if(size(MaxOrdRetList)==0){
-	//		list MaxOrdOCalc = MaxOrdArithO(IZ,IX,descended_IZ,boundary[1],i); 					
-	//	}else{
-	//		list MaxOrdOCalc = MaxOrdArithO(IZ,IX,descended_IZ,boundary[1],i,MaxOrdRetList);
-	//	}
 	
-		list MaxOrdOCalc = MaxOrdArithO(IZ,IX,descended_IZ,boundary[1],i); //TODO!!!!!!! x³+y⁴+z⁵
+		list MaxOrdOCalc = MaxOrdArithO(IZ,IX,descended_IZ,boundary[1],i); 
 		
 		descended_IZ = MaxOrdOCalc[2];
 		invariant_new = list();											//overwrite the variable
@@ -649,11 +555,7 @@ EXAMPLE : binomial_cjs; shows an example
 		
 		MaxIX[1] = invariant_new;
 		list MaxOrdCalculation = MaxOrdOCalc[1];
-	//	if(size(MaxOrdOCalc)>=3){
-	//		MaxOrdRetList = MaxOrdOCalc[3];
-	//	}else{
-	//		MaxOrdRetList = list();
-	//	}
+	
 		list tmp_Y = MaxOrdCalculation[2];											//tmp_Y = Y_1 \cup ... \cup Y_r, irred decomp of Y:= MaxOrd(X)
 		ideal Y_new = 1;																// in order to compute the union of the irred comp in tmp_Y
 		for(j=1; j<=size(tmp_Y); j++){
@@ -664,11 +566,9 @@ EXAMPLE : binomial_cjs; shows an example
 			if(defined(boundaryreturnlist)){
 				kill(boundaryreturnlist);
 			}
-			//TODO:
 			list boundaryreturnlist = SetAllBoundaryCompOld(invariant, invariant_new,boundary,tower);		// if max ref-order has improved, set all components of the boundary to be old
 			boundary = boundaryreturnlist[1];
-			//invariant = boundaryreturnlist[2];
-
+			
 			if(size(boundary)>0){									
 				MaxOrdOCalc = MaxOrdArithO(IZ,IX,descended_IZ,boundary[1],i); 			// new calculation neccessary because of changing the set of old components				
 				
@@ -686,10 +586,7 @@ EXAMPLE : binomial_cjs; shows an example
 			for(j=1; j<=size(tmp_Y); j++){
 				MaxIX[2][j] = list(tmp_Y[j][2],0);
 			}
-			//if(size(MaxOrdOCalc)>=3){
-			//	MaxOrdRetList = MaxOrdOCalc[3];
-			//	MaxIX[3] = MaxOrdRetList;
-			//}	
+			
 			if(isEndChart() == 1){			
 				CounterEndCharts++;
 				EndCharts[CounterEndCharts] = actual_chart;
@@ -768,7 +665,6 @@ EXAMPLE : binomial_cjs; shows an example
 						}
 						if(l > size(tmp_Y)){			//delete disappeared component
 							MaxIX[2] = delete(MaxIX[2],k);
-							//TODO?
 							MaxIX[1] = invariant_new;	//notwendig?
 							k = k-1;					//start next loop run with same k
 						}
@@ -829,9 +725,7 @@ EXAMPLE : binomial_cjs; shows an example
 			tower =  towerRetList[1];
 			MaxIX[1] =  towerRetList[2];
 			boundary = towerRetList[3];
-			
-		//	MaxIX[3] = MaxOrdRetList;
-			
+				
 			if(isEndChart() == 1){			
 				CounterEndCharts++;
 				EndCharts[CounterEndCharts] = actual_chart;
@@ -841,56 +735,11 @@ EXAMPLE : binomial_cjs; shows an example
 				L = L + CopiesOfCharts(i,mode);						
 			}
 		}
-		//if(i == 2 or i == 6 or i ==13 or i ==19 or i == 25 or i == 35){~;}
-		//fprintf(l1,"Chartnumber: %s",i);
-		//fprintf(l1,"transform IZ: %s ",IZ);
-		//fprintf(l1,"transform IX: %s ",mstd(IX)[2]);
-		//fprintf(l1,"transform IX: %s ",IX);
-		
-		//fprintf(l1,"descending IZ: %s ",descended_IZ);
-		if(defined(boundary)){
-			//fprintf(l1,"boundarylist: %s ",boundary);list oldcomps;
-			if(size(boundary)>1){
-				for(j=1; j<=size(boundary[2]);j++){
-					if(boundary[2][j] < 0){
-					oldcomps = oldcomps +list(boundary[1][j]);	
-					}
-				}
-				//fprintf(l1,"old components: %s ",string(oldcomps));
-			}
-		}
-		if(defined(Center_of_this_chart)){
-			//fprintf(l1,"Center: %s ",Center_of_this_chart);
-		}
-		if(defined(Centerideal)){
-			//fprintf(l1,"image of center: %s ",Centerideal);
-		}
-		//fprintf(l1,"lastmap: %s ",last_map);
-		//fprintf(l1,"totalmap: %s ",total_map);
-		//fprintf(l1,"path:");
-		//fprintf(l1,"%p",matrix(path));
-		if(defined(tower)){
-			if(size(tower)>0){
-			//	fprintf(l1,"tower: %s ",string(tower));
-			}
-		}
-		if(defined(MaxIX)){
-			//fprintf(l1,"invariant: %s ",string(MaxIX[1]));
-			//fprintf(l1,"MaxIX-locus: %s", string(MaxIX[2]));
-		}
-		//fprintf(l1,"");
-		
+			
 		kill(actual_chart);
-		
-		//only output
-		//if(i > 600){
-		//	setring(r);
-		//	ResTreeCJS(L);
-		//}
 	}
 			
 	setring(r);
-	//ResTreeCJS(L);
 	return(list(L, EndCharts, rtimer-runtime));
 }
 
@@ -921,7 +770,7 @@ EXAMPLE: example init_lists; shows an example
 	boundary[1][2] = list();
 	
 	list MaxOrdArithReturn = list();
-	//list MaxOrdRetList;
+	
 	ideal total_map = maxideal(1);
 	ideal last_map = maxideal(1);
 
@@ -943,12 +792,12 @@ EXAMPLE: example init_lists; shows an example
 		MaxOrdArithReturn = MaxOrdArithO(IZ,IX,descended_IZ,boundary[1],1);
 		list MaxOrdCenter = MaxOrdArithReturn[1];
 		descended_IZ = MaxOrdArithReturn[2];
-	//	MaxOrdRetList = MaxOrdArithReturn[3];
+	
 		invariant[1] = MaxOrdCenter[1];
 		MaxIX = list();
 		MaxIX[1] = invariant;
 		MaxIX[2] = list();
-	//	MaxIX[3] = MaxOrdRetList;
+	
 		tower = list();
 		tower[1] = list();
 		for(i=1;i<=size(MaxOrdCenter[2]);i++){
@@ -1054,7 +903,6 @@ EXAMPLE : CopiesOfCharts; shows an example
 	
 	int elimpart_flag = 0;
 	
-	//successor_list = blowUp3(ideal(0),Centerideal,ideal(0),boundary[1]);		//blowing up an trivial ambient space
 	successor_list = blowUp3(ideal(0),Centerideal);
 	//set ambient space to A^n in order to not miss a dimension 
 	
@@ -1075,10 +923,8 @@ EXAMPLE : CopiesOfCharts; shows an example
 		tmp_n = n;
 		map BlowUpMap = r,bM;
 		
-		//if(chartnumber == 25 and j == 1){~;}
-		
-		//TODO: sT oder aS bei IX?
-		ideal IX = sat(BlowUpMap(IX)+sT,eD[1])[1];			//if mode == 1 TODO for mode ==2 !!!  // +sT since sT have not to be trivial
+
+		ideal IX = sat(BlowUpMap(IX)+sT,eD[1])[1];			  // +sT since sT have not to be trivial
 		export(IX);
 		list elimpartlist = elimpart(IX);
 		ideal elimvars1 = elimpartlist[1];
@@ -1093,11 +939,6 @@ EXAMPLE : CopiesOfCharts; shows an example
 			
 			for(i=1; i<=n; i++){
 				tmpvar = var(rvar(rlist[2][i]));
-				//if(elimpartlist[5][i] == 0){				//superfluent variable
-				//	tmp_n--;
-				//	i++;
-				//	continue;
-				//}	
 				if(size(reduce(tmpvar,std(elimvars2))) == 0){
 					tmpordlist1[size(tmpordlist1)+1] = rlist[2][i];
 				}else{
@@ -1117,7 +958,7 @@ EXAMPLE : CopiesOfCharts; shows an example
 			ideal sT_new = elimmap(sT);
 			def elimring = ring(rlist);
 			setring(elimring);
-			//ideal sT = imap(newring,sT);
+	
 			ideal IX = imap(newring,IX);
 			export(IX);
 			list elimpartlist = imap(newring,elimpartlist);
@@ -1128,58 +969,26 @@ EXAMPLE : CopiesOfCharts; shows an example
 		
 		map BlowUpMap = r,bM;
 		i = 1;
-		//ideal IX_tmp = BlowUpMap(IX);
-		//while(EqualityOfIdeal(eD[1],1) != 0){
-		//	eD = minAssZ(IX_tmp[i] / Jnew[i])[1];	
-		//	i++;
-		//	if(i>= size(IX_tmp)){
-		//		break;
-		//	}
-		//}
+
 		ideal Centerideal = BlowUpMap(Centerideal);
 		n = nvars(basering);
-		//if(chartnumber == 25 and j == 1){~;}
-		
-		//if(EqualityOfIdeal(eD,1) == 1 or EqualToZero(eD) == 1){
-		//	for(i = 1; i<=n; i++){
-		//		flag = 0;
-		//		for(l=1; l<= size(Centerideal); l++){
-		//			if(Centerideal[l] / var(i) == 0){
-		//				flag = 1;
-		//			}
-		//		}
-		//		if(flag == 0){
-		//			eD = var(i);
-		//			break;
-		//		}
-		//	}
-		//}
+
 		ideal IZ = sat(BlowUpMap(IZ)+sT,eD[1])[1];
-		//TODO: MEHRERE MODI einmal via transformation und einmal via abstieg jedesmal neu berechnen!
-		//ideal descended_IZ = sat(BlowUpMap(descended_IZ),eD[1])[1];
+
 		ideal descended_IZ;
-		//ideal IX = BlowUpMap(IX);
-		//TODO other mode!
+
 		
 		if(mode == 1){
-			//ideal IX = Jnew; //mode = 1, strict transform
 			IX = std(IX);
-				// TODO:ausklammern! in beiden modes
-			//ideal IZ = aS;
-			//for (k=1; k<= size(IZ); k++){
-			//	IZ[i] = IZ[i] / gcd_of_polynomial_and_variable(IZ[i],eD[1])[1];
-			//}
-			//via abstieg:
-			//descended_IZ = MaxOrdArithO(IZ,IX,descended_IZ,chartnumber)[2];			//TODO!!!spaeter zusammen mit der invariante um unnoetige aufrufe von MOAO zu vermeiden!!!
 			if(elimpart_flag == 0){
 				descended_IZ = IZ;
-				//descended_IZ = sat(BlowUpMap(descended_IZ)+sT,eD[1])[1];
+
 			}else{
 				descended_IZ = IZ;
 			}
 		}
 		if(mode == 2){
-			ideal IX = BlowUpMap(IX);	//TODO!!!! oben wird IX schon saturiert gebildet
+			ideal IX = BlowUpMap(IX);	
 			
 			lowest_exponent = gcd_of_polynomial_and_variable(IX[1],eD[1])[2];	
 			for(k=1; k<=size(IX); k++){
@@ -1189,11 +998,7 @@ EXAMPLE : CopiesOfCharts; shows an example
 			}
 			
 			IX = quotient(IX,eD[1]^lowest_exponent);								// analog to sat
-			//for(k=1; l<=size(IX); k++){
-			//	IX[k] = IX[k] / (eD[1]^lowest_exponent);
-			//}
-			
-			
+					
 			ideal descended_IZ = BlowUpMap(descended_IZ);
 			lowest_exponent = gcd_of_polynomial_and_variable(descended_IZ[1],eD[1])[2];	
 			for(k=1; k<=size(descended_IZ); k++){
@@ -1202,9 +1007,6 @@ EXAMPLE : CopiesOfCharts; shows an example
 				}
 			}
 			descended_IZ = quotient(descended_IZ,eD[1]^lowest_exponent);
-			//for(k=1; l<=size(descended_IZ); k++){
-			//	descended_IZ[k] = descended_IZ[k] / (eD[1]^lowest_exponent);
-			//}
 		}
 		
 	
@@ -1212,7 +1014,7 @@ EXAMPLE : CopiesOfCharts; shows an example
 		poly tmp_poly;
 		ideal tmp_ideal;
 		
-		list MaxIX = BlowUpMap(MaxIX);	// TODO:  mode = 2???? sat???
+		list MaxIX = BlowUpMap(MaxIX);	
 		invariant = MaxIX[1];
 		for(l=1; l<= size(MaxIX[2]); l++ ){			//outer center has other calculation rules and inner center is going to be deleted		
 			tmp_ideal = 1;
@@ -1227,15 +1029,9 @@ EXAMPLE : CopiesOfCharts; shows an example
 				l = l-1;
 			}
 		}
-		//if(size(MaxIX)>2){
-		//	for(i = 1; i<=size(MaxIX[3]);i++){
-		//		MaxIX[3][i][2] = sat(MaxIX[3][i][2],eD[1])[1];
-		//	}
-		//}
 
 		if(size(MaxIX[2]) == 0){
 			MaxIX[1][1] = MaxIX[1][1] + list(var(1));				// dummy-variable in order to store invariant in the ring/chart
-			//MaxIX[3] = list();
 		}
 		
 
@@ -1243,8 +1039,7 @@ EXAMPLE : CopiesOfCharts; shows an example
 		ideal last_map = bM;
 		ideal total_map = BlowUpMap(total_map);
 		def path = imap(r,path);
-		
-		//export(IX);
+
 		export(IZ);
 		export(descended_IZ);
 		export(MaxIX);
@@ -1257,7 +1052,6 @@ EXAMPLE : CopiesOfCharts; shows an example
 		//check whether tower components gets empty
 		int towersize = size(tower);
 		
-		//if(mode == 1){
 			if(EqualityOfIdeal(eD,1) == 0){
 
 				for(k=1; k<= size(tower)-1; k++ ){			//outer center has other calculation rules and inner center is going to be deleted		
@@ -1284,18 +1078,12 @@ EXAMPLE : CopiesOfCharts; shows an example
 
 			} else{
 				tower = list();
-			}
-		//}
-		
-		//TODO: MODE == 2
-		
+			}	
 		
 		//delete last tower component
 		export(tower);
 
-
-
-		//TODO: leere boundary listen werden beim mapping gelöscht, daher neu in towergröße erstellen. bzw auf towergröße auffüllen
+		
 		if(boundarysize == 0){
 			list boundary = list();
 			boundary[1] = list(list(),list());
@@ -1304,10 +1092,7 @@ EXAMPLE : CopiesOfCharts; shows an example
 			list boundary = BlowUpMap(boundary);
 			for(l=1;l<=size(boundary);l++){
 				//quotient with the exc div for the strict transform:
-				for(i=1; i<= size(boundary[l][1]); i++){			//TODO!!! delete duplicates e.g. by elimpart-map //only for beautyful output
-					//tmp_poly = boundary[1][i][1];
-					//if(size(boundary[1][i])>1){print("maybe boundary not a monomial!"); ~;}
-					//boundary[1][i] = tmp_poly / gcd_of_polynomial_and_variable(tmp_poly,eD[1])[1];
+				for(i=1; i<= size(boundary[l][1]); i++){			// delete duplicates e.g. by elimpart-map //only for beautyful output
 					boundary[l][1][i] = minAssZ(boundary[l][1][i])[1];
 					boundary[l][1][i] = sat(ideal(boundary[l][1][i]),eD[1])[1];
 				}
@@ -1373,7 +1158,7 @@ EXAMPLE : gcd_of_polynomial_and_variable; shows an example
 	if(f/x == 0) {return(list(1,0));}
 																//alternativ sooft x rausteilen, wie hoch die ordnung ist
 	poly poly_with_highest_exponent = x; 
-	while(f/poly_with_highest_exponent!=0 ){					//TODO:einzelne erzeuger prüfen ob ungleich 1
+	while(f/poly_with_highest_exponent!=0 ){					//einzelne erzeuger prüfen ob ungleich 1
 		poly_with_highest_exponent = poly_with_highest_exponent * x;
 		i++;
 	}
@@ -1427,7 +1212,6 @@ EXAMPLE : elimparts_in_IX; shows an example
 			}
 			if(tmp_flag == 0){
 				hasChanged = 1;
-				print("elimpart changes");
 			}
 		}
 	} else{
@@ -1477,8 +1261,7 @@ EXAMPLE : elimparts_in_IX; shows an example
 					//checks whether tower[k][l][1] is empty:
 					if(EqualityOfIdeal(tmp_Center, 1) == 1){
 						tower[k] = delete(tower[k],l);
-						continue;
-	
+						continue;	
 					}
 				}	
 			}
@@ -1503,9 +1286,7 @@ EXAMPLE : elimparts_in_IX; shows an example
 			}	
 		}
 	}
-	
-
-	
+		
 	//updating MaxIX
 	if(EqualityOfIdeal(IX,1) == 1){
 		MaxIX[1] = list();
@@ -1542,7 +1323,7 @@ EXAMPLE : labeling; shows an example
 "{
 	int i; 	int j; int k = 0; int flag;
 	int n = nvars(basering);
-	int maxlabel = ncols(path);				//TODO: number to high //only for cosmetical reasons
+	int maxlabel = ncols(path);				//number to high //only for cosmetical reasons
 
 	ideal lastMaxOrdIdeal;
 	int oldLabel;
@@ -1591,7 +1372,6 @@ EXAMPLE : labeling; shows an example
 		}
 	}
 
-	//TODO
 	return();
 }
 
@@ -1709,7 +1489,6 @@ EXAMPLE :
 		invariant[j] = MaxOrdArithO(IZ,Y,IZ,boundary[j])[1][1];			// invariant of Y_(j-1) in the j-th level of recursion
 	}
 	
-	//TODO: boundary und invariant tower
 	while(EqualityOfIdeal(Y,Y_new) == 0){
 		flag = 1;
 		Y = Y_new;
@@ -1740,7 +1519,7 @@ EXAMPLE :
 	return(tower, invariant, boundary);
 }
 ///////////////////////////////////////////////////////////////////////////////
-//Todo //input boundary, old and new invariant of some level ? or of all levels simultaneously? labels of tower? here? necessary to delete?
+
 proc SetAllBoundaryCompOld(list invariant, list invariant_new, list boundary, list tower){
 	int i; int j; int k; int n;
 	int improved;
@@ -1816,7 +1595,6 @@ proc SetAllBoundaryCompOld(list invariant, list invariant_new, list boundary, li
 
 
 ///////////////////////////////////////////////////////////////////////////////
-//TODO: input boundary (and old invariantlist ?), output all invariants of each level
 proc MaxOrdArithO(ideal IZ, ideal IX, ideal descended_IZ, list boundary, list #)
 "USAGE: MaxOrdArithO(ideal descended_IZ, ideal IX,list L); IZ and IX like in MaxOrdArith and L for the actual chart of the blowing up 
 RETURN: locus of maximal order intersected with the global old components of the Boundary:
@@ -1836,7 +1614,7 @@ EXAMPLE: example MaxOrdArithO; shows an example
 	list elimpartmaxordlist;
 	//list MaxOrdRetList;
 	
-	//ideal descended_IZ = IZ;			//todo  ggf. nicht jedesmal abstieg neu berechnen
+	//ideal descended_IZ = IZ;			
 	int descending_counter;
 	int flag = 0;
 	ideal oldcomponent;
@@ -1874,7 +1652,6 @@ EXAMPLE: example MaxOrdArithO; shows an example
 				list MaxOrdRetList = #[2];
 			}	
 		}
-		//if (chartnumber == 35){~;}	
 	}
 	
 	IX = std(IX);
@@ -1920,8 +1697,7 @@ EXAMPLE: example MaxOrdArithO; shows an example
 			//-> compute minAssZ
 		
 			minAsslist = minAssZ(MaxOrdIdeal);
-			//print(minAsslist);
-			//print(MaxOrdCalculation);
+
 			for(i=1; i<=size(minAsslist); i++){
 				if(size(MaxOrdCalculation[2]) < i){
 					MaxOrdCalculation[2][i] = list();
@@ -1953,15 +1729,9 @@ EXAMPLE: example MaxOrdArithO; shows an example
 		if(maxord == 1){
 			list descended_IZcomps = list();
 			// only one irred. component of MaxOrdArith possible in case of one input binomial
-			// todo: Change for not hypersurfaces!
 			if(sizeIX==1){
-				//MaxOrdIdeal = OldComps;
-				//MaxOrdIdeal = std(MaxOrdIdeal);
-				//MaxOrdCalculation[2][1][2] = MaxOrdIdeal;
 				descended_IZ = IX;
-				//MaxOrdCalculation = MaxOrdArith(IZ,MaxOrdIdeal); ???
-			}else{	//calculate max-v(X) 					//todo: nottrivial input ambientspace!!!
-
+			}else{	//calculate max-v(X) 					
 
 				if(EqualityOfIdeal(descended_IZ,IX) == 0){
 					//for minimizing Equality...-calls
@@ -1980,34 +1750,7 @@ EXAMPLE: example MaxOrdArithO; shows an example
 						}
 					}
 				}
-				//if(EqualityOfIdeal(descended_IZ,IX) == 0){	
-				//	i=1;
-				//	if(maxordgreaterthanlimit(descended_IZ,IX,1) == 0){
-				//		while(i <= size(IX)){
-				//			for(j=1; j<=size(descended_IZcomps); j++){
-				//				if(i == descended_IZcomps[j]){
-				//					i++;
-				//					continue;							//next loop through for loop with increased i because of ordering structure of list IZcomps
-				//				}
-				//			}
-				//			if(maxordgreaterthanlimit(IZ,descended_IZ+IX[i],1) == 0){			//IZ regular
-				//				descended_IZ = descended_IZ +IX[i];
-				//			}else{
-				//				i++;
-				//				continue;
-				//			}
-				//			if(EqualityOfIdeal(descended_IZ,IX) == 1){
-				//				break;
-				//			}
-				//			if(MaxOrdArith(descended_IZ,IX)[1] >1){							//only check if neccessary
-				//				break;
-				//			}
-				//		}
-				//	} 
-				//}
-				//if(size(IZ) == 0){
-				//	IZ = 0;
-				//}
+				
 				//overwrite MaxOrdCalculation:
 				if(EqualityOfIdeal(descended_IZ,IX) == 0 and size(reduce(descended_IZ,IX,1)) == 0){
 					//MaxOrdCalculation = MaxOrdArith(descended_IZ,IX,0,MaxOrdRetList);
@@ -2211,7 +1954,7 @@ proc ChangeListForSTDCalculation(){
 
 	ideal sI = std(IX);
 	IX = sI;
-	MaxIX[1] = compute_invariants(IX,IZ); // TODO or to delete
+	MaxIX[1] = compute_invariants(IX,IZ); 
 
 	return(list(IX,MaxIX));
 }
@@ -2224,10 +1967,9 @@ RETURN: list of invariants:
 	b_max: max entry in list B[index], 
 	counter_b_max: number of entries equal to b_max
 "{
-	return (MaxOrdArithO(IZ,IX,descended_IZ,0)[1][1]);				// TODO or to delete 		
+	return (MaxOrdArithO(IZ,IX,descended_IZ,0)[1][1]);						
 }
 ///////////////////////////////////////////////////////////////////////////////
-//TODO ? optional parameter refined or log-refined order? included in setallboundarycomponentsold ?
 proc invariantHasImproved(list invariant, list invariant_new){
 	int i; int j;
 	
@@ -2790,7 +2532,7 @@ EXAMPLE: example GenerateL1; shows an example
 				containsOne = 1;
 				positionOfOne_col = j;
 				positionOfOne_row = i;
-				//sprintf("1 gefunden: %s %s", positionOfOne_row, positionOfOne_col);
+
 				hi = var(j) - IZ[i];				//hi = x_j -fi
 				for(k=1; k<=maxrow; k++) {
 					if(k != i){
@@ -2822,21 +2564,16 @@ EXAMPLE: example GenerateL1; shows an example
 	
   
 	for (i=1; i<= NumbRowIndices;i++) {  			//Zeilenweise indicelisten zum Intvec konvertieren
-    //list to intvec:
-    //sprintf("i:%s von %s",i,NumbRowIndices);
+
 		for(j =1; j<= CoDimZ;j++) {
 			rowIndex[j] = int(rowIndices[i][j]);  	//naechsten rowVector nehmen
 		}
 		for(j = 1; j<= NumbColIndices; j++) { 		//rowVector (zeile) fest, colvektor (spalte) veraendern
-			//sprintf("j:%s von %s",j, NumbColIndices);
+			
 			for(k = 1; k <= CoDimZ; k++) {     		//naechsten ColVector (spalte) nehmen
 				colIndex[k] = int(colIndices[j][k]); 
 			}
-			//print("Berechne Untermatrix:");
-		
-			//try to optimize calculation i,j der 1 sollen in der überdeckung sein
-			//sprintf("Position: %s",positionOfOne_col);
-			//sprintf("rowIndex: %s",rowIndex);
+			
 			if(det(submat(JZ,rowIndex,colIndex)) == 0){
 				j++;
 				continue;
@@ -3326,10 +3063,7 @@ EXAMPLE: example HorizontalDecomposition; shows an example
 "
 {
 	def OLDRING = basering;
-	//print("HorizontalDecomposition of");
-	//print(I);
-	//list primdec = primdecZ(I,0);
-	//print(primdec);
+	
 	execute("ring RATIONALS=(0),("+varstr(basering)+"),("+ordstr(basering)+");"); 
 	ideal I = imap(OLDRING,I);
 	list primdec = imap(OLDRING,primdec);
@@ -3402,19 +3136,14 @@ EXAMPLE: example InterestingPrimes; shows an example
 		while(EqualToZero(Iint)) {
 			r = size(Itemp);
 			f = Itemp;
-			for (i = 1; i<=r ; i++) {					//TODO: optimization: only calculate diff of the f[i] generated in last pass through the loop 
+			for (i = 1; i<=r ; i++) {					//optimization: only calculate diff of the f[i] generated in last pass through the loop 
 				for (j = 1; j<=n; j++) {
-					//sprintf("Variable %s von %s",j,n);
 					Itemp = Itemp + ideal ( diff( f[i],var(j) ));
-					//sprintf("Itemp: %s",Itemp);
 				}
 			}
 		Iint = IntersectionWithRing(std(Itemp));
-		//print("Iint berechnet");
 		}
-		
 		resultlist = primefactors(bigint(Iint[1]))[1];  //nur die primfaktoren von Iint[1], da hauptideal ggf stdbasis von Iint
-		
 	} else {  											// case IZ != 0
   
 
@@ -3425,17 +3154,14 @@ EXAMPLE: example InterestingPrimes; shows an example
 		
 		list GeneratorList = GenerateL1(CoDimZ, JZ,IX,IZ,resultlist);
 		list L1 = GeneratorList[1];
-		//print("L1 in InterestingPrimes ready"); 
 
 		list vectorsL1 = GeneratorList[2];
-		//list colIndices = GeneratorList[2];
-		
-		//print("Generate L1 in InterestingPrimes ready"); 
+
 		
 		int s; int member; poly detM; list y;
 		matrix M; matrix A;
 		ideal Fi;
-		//print("Begin with calculation in charts (Interesting Primes)");
+
 		//Derivation with respect to a system of parameters
 		for (member = 1; member <= size(L1); member++){
 			M = L1[member];
@@ -3448,8 +3174,6 @@ EXAMPLE: example InterestingPrimes; shows an example
 				Itemp = std(reduce(IX,std(IZ)));  // Itemp = ideal(f_1,...,f_r)	 
 				Iint = 0;
 				A = inverse_L(M)[1]; 			//Matrix of cofactors
-		//		print("Begin: while (InterestingPrimes)");
-			//	print(member);
 				while(EqualToZero(Iint)) {
 					Fi = std(reduce(Itemp,std(IZ)));              // nach remark 4.2
 					r = size(Fi);
@@ -3465,7 +3189,7 @@ EXAMPLE: example InterestingPrimes; shows an example
 				if(EqualityOfIdeal(Iint,1) == 0){
 					resultlist = AppendListToList(resultlist, primefactors( int(Iint[1]) ) [1]); //nicht doppelt einfuegen
 				}
-		//		sprintf("Karte:%s ready in InterestingPrimes",member);
+		
 			}	
 		}                                                              
 	}
@@ -3699,14 +3423,12 @@ EXAMPLE: example MaxOrdArith; shows an example
 	list ImaxZerlegt;          // damit, falls MaxOrd(Char K = 0) nichts zurückgibt liste leer ist
 	ImaxZerlegt = MaxOrd0[3];  // für ausgabe wenn horizontale komponenten im ort maximaler ordnung
   
-	//print("MaxOrd (Char K=0) ready");
 	setring(R);
 	
 	ideal Imax = imap(RADRINGQ,Imax);     //Geschnitten Z[x]
 	list RetList;
 	RetList[1]= list(0,Imax);
 	list PrimeList = InterestingPrimes(IZ,IX);
-	//print("InterestingPrimes ready");
   
 	list DiffList;
 	
@@ -3752,7 +3474,7 @@ EXAMPLE: example MaxOrdArith; shows an example
 				m = m-1;
 			}
 			
-			//TODO!!!
+			
 			//Imaxneu = minAssZ(Imax); // readable output //redundante rechnung, da es in if-abfrage überschrieben wird???
 			//check whether we have to glue or to substitute locus of max order
 			if (m >= maxord) {
@@ -3827,7 +3549,7 @@ EXAMPLE: example MaxOrdArith; shows an example
 						}
 					}
 				}
-				//sprintf("Karte:%s ready in MaxOrdArith",member);
+				
 			}
       
 			if(limit_order == 0){ // only necessary if we need the output
@@ -3848,7 +3570,6 @@ EXAMPLE: example MaxOrdArith; shows an example
 			}
 		
 		}//end case IZ != 0
-		//sprintf("Primzahl:%s ready in MaxOrdArith",j);
 	}// end for (InterestingPrimes)
 
 	//calculate the minimal associated primes only once:

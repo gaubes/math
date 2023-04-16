@@ -215,10 +215,7 @@ proc print_determinantal_resolve(matrix M , int sizeOfMinor){
 }
 
 //----------------------------------------------------------------------
-//TODO
-//BO killen wenn final chart für binresolve ODER det monomial case -> 1 entry
-//centerlist nicht killen, wenn leer 
-//TODO: erkenne wenn r-minoren aufgelöst sind!
+
 proc determinantal_resolve(matrix M, int sizeOfMinor){
 	if(sizeOfMinor > min(nrows(M), ncols(M))){
 		ERROR("There are no r-minors in M");
@@ -237,8 +234,7 @@ proc determinantal_resolve(matrix M, int sizeOfMinor){
 	list EndCharts;
 	
 	string stat = datalist[3][1];
-	print("stat:");
-	stat;
+
 	ideal cent;
 	export(cent);
 	//------------------------------------------------------------------
@@ -302,18 +298,15 @@ proc determinantal_resolve(matrix M, int sizeOfMinor){
 
 	if(defined(BO)){
 		cent = calculate_center(1);
-		print(cent);
 	}
 	if(defined(HuList)){
 		if(size(HuList[1])>1){
-			cent = calculate_center(1);	//TODO later delete superfluent entries in centerlist
+			cent = calculate_center(1);	//later delete superfluent entries in centerlist
 		}else{
 			stat = "transformation";
 			datalist[3][1] = stat;
 		}
 	}
-	print("cent");
-	print(cent);
 	BlowUpTree = BlowUpTree +  CopyDataInNextChartsAndBlowUp(datalist,cent,1);
 	
 	int i,j,k;	
@@ -323,8 +316,6 @@ proc determinantal_resolve(matrix M, int sizeOfMinor){
 	int oldsize;	//maybe usefull for optimizations, when checking whether we reach r-minors as entries
 
 	for(i = 2; i<= size(BlowUpTree);i++){
-		print("chartnumber");
-		i;
 					
 		if(defined(Chart)){
 			kill(Chart);
@@ -335,11 +326,8 @@ proc determinantal_resolve(matrix M, int sizeOfMinor){
 		def Chart = BlowUpTree[i];
 		setring(Chart);
 		
-		print(path);
 		matrix M = datalist[2];
-		print("Matrix:");
-		print(M);
-		print(datalist);
+
 		int number_cols = ncols(M);
 		int number_rows = nrows(M);
 		int mindim = min(ncols(M),nrows(M));
@@ -349,22 +337,17 @@ proc determinantal_resolve(matrix M, int sizeOfMinor){
 				if(defined(HuList)){
 					kill(HuList);
 				}
-				print("continue BO");
-				BO;
 				ideal cent = calculate_center(i);			//BO could be deleted if center equals 1; No center than		
-				print("cent berechnet");
 				if(EqualityOfIdeal(cent,1) == 1 or EqualityOfIdeal(cent,BO[1]) == 1 or EqualityOfIdeal(cent,BO[2]) == 1){
 					kill(cent);
 					kill(BO);
 				}else{
 					export(cent);
 				}
-				print("exportiert oder gelöscht");
 			}
 			if(defined(HuList)){
-				print("continue Hu");
 				if(size(HuList[1]) > 1){
-					ideal cent = calculate_center(i);	//TODO later delete superfluent entries in centerlist
+					ideal cent = calculate_center(i);	//later delete superfluent entries in centerlist
 					export(cent);
 				}else{
 					stat = "transformation";
@@ -377,8 +360,6 @@ proc determinantal_resolve(matrix M, int sizeOfMinor){
 		if(!defined(cent)){				//new status have to start; no center already choosen
 
 			stat = calculate_process_of_center_calculation(M);
-			print("stat");
-			print(stat);
 			datalist[3][1] = stat;
 			ideal cent;
 			export(cent);
@@ -390,9 +371,6 @@ proc determinantal_resolve(matrix M, int sizeOfMinor){
 				datalist[3][1] = stat;
 				datalist[3][2] = minorsize;
 				datalist[2] = M;
-				print("Matrix");
-				print(M);
-				print(stat);
 			}
 			if(rMinorsResolved(datalist) == 1){
 				EndCharts[size(EndCharts)+1] = BlowUpTree[i];
@@ -409,7 +387,6 @@ proc determinantal_resolve(matrix M, int sizeOfMinor){
 				export(BO);
 				cent = calculate_center(i);
 				
-				//TODO: wir brauchen 1-x^A statt y-x^A; via y^2 - x^2A ?
 			}
 			if(stat == "Hu"){
 
@@ -430,8 +407,6 @@ proc determinantal_resolve(matrix M, int sizeOfMinor){
 
 				def rnew = CreateBinomialFromMonomialMatrix(M);	//Modify method s.t. it exports datalist and path automatically
 				setring(rnew);
-				print("monomial ideal:");
-				retideal;
 				
 				ideal J = retideal; //was created in method and is global in the ring rnew
 				list BO = createBO(J);
@@ -450,10 +425,7 @@ proc determinantal_resolve(matrix M, int sizeOfMinor){
 				export(cent);
 			}
 		}
-		print("cent:");
-		print(cent);
 		if(EqualityOfIdeal(cent,1) == 0 ){
-			//TODO: pruefe ob r-minoren resolved sind
 			if(rMinorsResolved(datalist) == 0){		
 				BlowUpTree = BlowUpTree + CopyDataInNextChartsAndBlowUp(datalist,cent,i);	
 			}else{
@@ -522,7 +494,6 @@ proc rMinorsResolved(list datalist){
 }
 
 //----------------------------------------------------------------------
-//TODO: Lists BO and centerlist have to be global!
 proc calculate_center(int chartnumber){
 
 	int i,j;
@@ -530,24 +501,18 @@ proc calculate_center(int chartnumber){
 	
 	ideal center;
 	if(defined(HuList)){
-		//if(chartnumber == 6){~;}
 		//assume: centerlist is not empty!
 		list tmplist = HuList[1][size(HuList[1])];
-		print(HuList);
 		center = tmplist[size(tmplist)];
 		HuList[1][size(HuList[1])] = delete(tmplist,size(tmplist));			//Always choose LAST entry of list and delete it
 		
-		//if(size(centerlist) == 0){
-		//	kill(centerlist);
-			//TODO: Tag setzen, damit wir im nächsten Schritt sparen können Hu neu zu berechnen!!!
-		//}
 	}
 	if(defined(BO)){
 		list Descendlist = calculate_centerBO(BO, chartnumber);  
 		BO = Descendlist[1][1]; 	//Only the first BO needed
 		center = Descendlist[3];
 		if(EqualityOfIdeal(center,1) == 1){		//final chart in resolve.lib
-			kill(BO);													//TODO!!!! neuen status ermitteln und dann dadrin weitermachen
+			kill(BO);													
 		}
 		if(defined(BO)){
 			if(datalist[3][1] == "monomial"){
@@ -575,12 +540,9 @@ proc calculate_center(int chartnumber){
 			}
 		}
 	}
-	print("center:");
-	center;
 	return(center);
 }
-//dummy function for later improvements and more flexibility
-//TODO: Implement more other methods and add a tag which chooses the right one!
+
 proc calculate_centerBO(list L, int chartnumber){
 	return(DescendInDimension(L,chartnumber));
 }
@@ -651,7 +613,7 @@ proc isLocallyMonomial(matrix M)
 RETURN: 1 if the entries of M are locally monomial, 0 if there is an entry which is not locally monomial
 EXAMPLE: example isLocallyMonomial; shows an example
 "
-{ // only 1-x^A equations allowed //TODO: ausfaktorisieren, da y(1-x^A) vorkommen kann
+{ // only 1-x^A equations allowed 
 	int i,j,k;
 	int LocallyMonomial = 1;
 	int number_cols = ncols(M);
@@ -764,7 +726,7 @@ EXAMPLE: example isresolvedMonomial; shows an example
 		return(0);
 	}
 
-	ideal J = minor(M,1);					//Maybe ideal equals 1 but matrix has no 1-entry e.g. x and 1-x are in the ideal.... TODO create covering
+	ideal J = minor(M,1);					//Maybe ideal equals 1 but matrix has no 1-entry e.g. x and 1-x are in the ideal.... 
 	resolved = EqualityOfIdeal(J,1);			
 	return(resolved);
 }example{
@@ -851,18 +813,17 @@ RETURN: the binomial ideal corresponding to the determinantal monomial case
 EXAMPLE: example CreateBinomialFromMonomialMatrix; shows an example
 "
 {		//requires a monomial matrix M
-	def r = basering;			//NEIN//TODO: save ring in List of Data in order to change back afterwards
+	def r = basering;			// save ring in List of Data in order to change back afterwards
 	int n = nvars(r);
 	int i;
 	
 	ideal tmpideal = std(minor(M,1));
-	int d = MaxOrd(0,tmpideal)[1];						//TODO: ambient space???
+	int d = MaxOrd(0,tmpideal)[1];						
 	int idealsize = size(tmpideal);						// we need 2*idealsize many new variables
 	
 	//ring tmpr = 0,(z(1..2*idealsize)),dp;				//Not necessary in char 0
 	execute("ring tmpr=("+charstr(basering)+"),((u(1..n),z(1..idealsize))),(dp(n),dp(idealsize));");
 	matrix Mnew = fetch(r,M);	//reihenfolge der variablen wichtig!
-	//TODO: fetch whole datalist
 	ideal tmpideal = fetch(r,tmpideal);
 	ideal retideal;
 	
@@ -902,15 +863,9 @@ proc finishedDetMonomialCase(list datalist){
 	}
 	int n = size(sufficientVars);
 	string StringsufficientVars = string(sufficientVars);
-	print("StringsufficientVars");
-	StringsufficientVars;
 	//Construct new ring with less variables
 	execute("ring tmpr=("+charstr(basering)+"),("+StringsufficientVars+"),(dp(n));");
-	//TODO: imap, da Reihenfolge unwichtig, gleicher Name auf gleichen Namen abbilden
 	list datalist = imap(r,datalist);
-
-	print("datalist: (finished monomial case)");
-	datalist;
 	export(datalist);
 	def path = imap(r,path);
 	export(path);
@@ -921,7 +876,7 @@ proc finishedDetMonomialCase(list datalist){
 //----------------------------------------------------------------------
 //			Blow up method
 //----------------------------------------------------------------------
-//TODO: Ueberarbeiten; datentyp liste 
+
 proc CopyDataInNextChartsAndBlowUp(list datalist, ideal Center, int chartnumber)
 "USAGE: CopyDataInNextChartAndBlowUp(matrix M, ideal Center, int chartnumber ); computes the blow up and copies the data (strict transform, ideal and pathmatrix) in the successorcharts
 RETURN: list of rings which represent the charts during the whole resolution process
@@ -947,20 +902,15 @@ EXAMPLE: example CopyDataInNextChartAndBlowUp; shows an example
 	list E = datalist[4];
 	ideal abb = datalist[5];
 	
-	//TODO: Differ center == 0 (only transformation) and center != 0 case
+	// Differ center == 0 (only transformation) and center != 0 case
 	list successorList;
-	if (defined(HuList)){
-	print("HuList:");
-	HuList;
-	}
+
 	if(EqualityOfIdeal(Center,0) == 1){	//Transformation
-		print("Transformation wird durchgeführt:");
 		if(datalist[3][1] == "OneCovering"){
 			successorList = generateOneCovering(datalist,chartnumber);
 		}else{	
 			successorList = generateCovering(datalist,chartnumber);
 		}
-		print(successorList);
 	}else{	
 		successorList = blowUp3(W,Center);	
 		int number_center_components = size(successorList);
@@ -968,8 +918,6 @@ EXAMPLE: example CopyDataInNextChartAndBlowUp; shows an example
 
 		for(j = 1;j<=number_center_components; j++){
 			if(defined(newring)){kill newring;}
-			print(j);
-			print(number_center_components);
 			def newring = successorList[j];
 			setring(newring);
 			map BlowUpMap = r,bM;		
@@ -977,23 +925,18 @@ EXAMPLE: example CopyDataInNextChartAndBlowUp; shows an example
 			//export(W);
 			//list datalist = list();
 			list datalist = BlowUpMap(datalist);
-			//print(datalist);
+
 			export(datalist);
-			print("datalist:");
-			datalist;
+
 			datalist[1] = W;
 			list E = datalist[4];
 			E[size(E)+1] = eD[1];
-			print("eD");
-			eD;
 			datalist[4] = E;
 		
 			if(BOdefined){
 				list BO = BlowUpMap(BO);			
 				BO[1] = aS;
 				BO[2] = sat(ideal(BO[2]),eD[1])[1];
-				print("BO:");
-				BO;
 				for(k=1; k<=size(BO[4]);k++){
 					BO[4][k] = sat(ideal(BO[4][k]),eD[1])[1];	
 				}
@@ -1001,7 +944,7 @@ EXAMPLE: example CopyDataInNextChartAndBlowUp; shows an example
 				
 				BO[5] = bM;
 				export(BO);
-			}//TODO: strict transforms?
+			}
 			if(HuListdefined == 1){
 				list HuList = BlowUpMap(HuList);
 				for(k=1; k<=size(HuList[3]);k++){
@@ -1014,10 +957,7 @@ EXAMPLE: example CopyDataInNextChartAndBlowUp; shows an example
 				string stat = "transformation";
 			}
 		
-			//Noch anderes mit übergeben?
-			//alles einzeln abbilden
-			//darauf achten, dass alles irgendwie ein ringelement hat
-			ideal abb = BlowUpMap(abb);					//abbildung aus resbinomial2.lib //TODO: mit bM verknuepfen!!!!?
+			ideal abb = BlowUpMap(abb);					//abbildung aus resbinomial2.lib 
 			datalist[5] = abb;	
 			matrix N = BlowUpMap(M);				// total transform
 			matrix Ntmp = weakTransformOfMatrix(N);
@@ -1042,7 +982,6 @@ EXAMPLE: example CopyDataInNextChartAndBlowUp; shows an example
 				if(EqualityOfIdeal(Jmonom,1) == 1){
 					kill(BO);
 					//reduce variables in the ring
-					print("monomial case: reduce number of variables");
 					if(defined(rnew)){
 						kill(rnew);
 					}
@@ -1052,7 +991,6 @@ EXAMPLE: example CopyDataInNextChartAndBlowUp; shows an example
 					if(defined(newring)){
 						kill(newring);
 					}
-					print("monomial case finished");
 				}
 			}
 		
@@ -1143,9 +1081,6 @@ proc generateOneCovering(list datalist, int chartnumber){
 				if(M[k,l] == hypersurface){
 					posrow = k;
 					poscol = l;
-					print("Position:");
-					poscol;
-					posrow;
 				}
 			}
 		}
@@ -1163,8 +1098,7 @@ proc generateOneCovering(list datalist, int chartnumber){
 		datalist[1] =  sat(ideal(datalist[1]),I)[1];
 		//datalist[2] =  sat(datalist[2],I)[1];
 		matrix N = datalist[2];
-		print("old M:");
-		print(N);
+;
 		if(poscol != 0){
 			for(k=1;k<=nrows(N); k++){
 				for(l=1; l<= ncols(N); l++){
@@ -1173,10 +1107,8 @@ proc generateOneCovering(list datalist, int chartnumber){
 					}
 				}
 			} 			
-		//TODO: Matrix abbilden; Alle Einträge mit I multiplizieren und dann für Eintrag (i,j) = 1 column i  und row j weak transformen
-		N[posrow,poscol] = 1;
-		print("new M:");
-		print(N);
+			N[posrow,poscol] = 1;
+
 		}else{print("Eintrag nicht in Matrix"); ~;}
 		
 		
@@ -1184,7 +1116,6 @@ proc generateOneCovering(list datalist, int chartnumber){
 			datalist[4][j] =  sat(ideal(datalist[4][j]),I)[1];						
 		}
 		datalist[5] =  sat(ideal(datalist[5]),I)[1];		
-		//saturation: 
 
 		
 		setring(old_r);
@@ -1202,7 +1133,6 @@ proc generateCovering(list datalist, int chartnumber){
 	
 	int i,j,k;
 	int member;
-	//TODO
 	
 	ring old_r = basering;
 	int n = nvars(basering);
@@ -1213,8 +1143,7 @@ proc generateCovering(list datalist, int chartnumber){
 	
 	list L1;
 	list simlocmon = ListForHU(M);
-	print("HuList:");
-	HuList;
+
 	for (i=1; i<= size(HuList[2]);i++){
 		L1[i] = list();
 		L1[i][1] = HuList[2][i][1];
@@ -1240,21 +1169,18 @@ proc generateCovering(list datalist, int chartnumber){
 	}
 	
 	int contained = 0;
-	print(L1);
-	// Diese Liste direkt bei HuAlgorithm mit zurückgeben -> letzte zentrumsstufe [1] und rest [2]	
-	// Liste Hyperflächen L1[i][1][j] -> i-te Karte schneidende Hyperflächen
-	//	L1[i][2][j] -> i-te Karte nicht-schneidende Hyperflächen (D(hl...hk))
+	// List of hypersurfaces L1[i][1][j] -> i-th chart intersecting hypersurfaces
+	//	L1[i][2][j] -> i-th chart not intersecting hypersurfaces (D(hl...hk))
 	list successorlist = list();
 	list N;
-	//int n;
+
 	ideal normcrossideal;
 	ideal complementideal;
-	print("L1:");
-	print(L1);
+
 	//ggf alle hyperflächen einzeln
 	for (member = 1; member <= size(L1); member++){ 	 //member stimmt mit i aus L und indices ueberein
 		N = L1[member];
-		//n = size(N[1]);
+
 
 
 		ideal normcrossideal;
@@ -1274,32 +1200,23 @@ proc generateCovering(list datalist, int chartnumber){
 
 		
 		setring(old_r);
-		print("parametersystem:");
-		normcrossideal;
+
 		map f = new_r,normcrossideal;
 		//saturation:
 		
-
 		for(i=1;i<=size(datalist[1]);i++){
 			datalist[1][i] =  sat(ideal(datalist[1][i]),complementideal)[1];
 		}
-		//datalist[2] =  sat(datalist[2],I)[1];
-		//TODO: Matrix abbilden; Nachrechnen!!!
-		//TODO: weak transform
 		ideal eD = complementideal;
 		export(eD);
-		print("vorher:");
-		print(M);
-		//M = weakTransformOfMatrix(M);
+
+
 		for(i=1;i<=nrows(M);i++){
 			for(j=1;j<=ncols(M);j++){
 				M[i,j] = sat(ideal(M[i,j]),complementideal)[1];
 			}
 		}
-		print("nachher:");
-		print(M);
-		
-		//datalist[3] =  sat(datalist[3],I)[1];
+
 		for(i=1;i<=size(datalist[4]);i++){
 			datalist[4][i] =  sat(ideal(datalist[4][i]),complementideal)[1];						
 		}
@@ -1363,7 +1280,6 @@ proc generateCovering(list datalist, int chartnumber){
 //----------------------------------------------------------------------
 //Requires a simloc matrix M
 proc generateListsimlocmon(matrix M){
-		//TODO
 		int i,j;
 		ideal I;
 		int maxcol = ncols(M);
@@ -1523,7 +1439,7 @@ EXAMPLE: example generic_resolve; shows an example
 	if(mode == "sym"){
 		ring r = 0,(x(1..m*(m+1) div 2)),dp;
 		matrix M = symmat(m);
-		minsize = 1;			//TODO???
+		minsize = 1;			
 	}
 	if(mode == "skew"){
 		ring r = 0,(x(1..m*(m-1)div 2)),dp;
@@ -1569,7 +1485,7 @@ EXAMPLE: example generic_resolve; shows an example
 	ideal cent = minor(M,1);											//auxiliary data 
 	export(cent);
 	
-	if(minorsize[1] <= minsize){													// ideal of 1 minors is already resolved
+	if(minorsize[1] <= minsize){										// ideal of 1 minors is already resolved
 		return(BlowUpTree,1,1);
 	}
 	
@@ -1608,7 +1524,7 @@ EXAMPLE: example generic_resolve; shows an example
 		export(minorideal); 
 		mindim = min(ncols(M),nrows(M));
 		
-		if(minorsize[1] > minsize){		//TODO!!! depends on the mode
+		if(minorsize[1] > minsize){		
 			oldsize = size(BlowUpTree);
 			ideal cent = minor(M,1);									//auxiliary data 
 			export(cent);
@@ -1716,7 +1632,7 @@ EXAMPLE: example CopyDataInNextChartAndBlowUp; shows an example
 		E[size(E)+1] = eD[1];
 		export(E);
 
-		ideal abb = BlowUpMap(abb);					//abbildung aus resolve.lib //TODO: mit bM verknuepfen!!!!
+		ideal abb = BlowUpMap(abb);					
 		export(abb); 	
 		matrix N = BlowUpMap(M);				// total transform
 		export(N);
@@ -1832,7 +1748,7 @@ EXAMPLE: example weakTransformOfMatrix; shows an example
 }
 
 
-proc generic_gauss(matrix N, int number_rows, int number_cols)			//TODO: compute the map of abb
+proc generic_gauss(matrix N, int number_rows, int number_cols)			
 "USAGE: generic_gauss(matrix N, int number_rows, int number_cols ); computes the gaussian steps in the resolution process.
 RETURN: transformed matrix M
 EXAMPLE: example generic_gauss; shows an example
@@ -1882,7 +1798,7 @@ EXAMPLE: example generic_gauss; shows an example
 	//Todo
 }
 
-proc skewsymmetric_gauss(matrix N, int number_rows, int number_cols)	//TODO: compute the map of abb
+proc skewsymmetric_gauss(matrix N, int number_rows, int number_cols)	
 "USAGE: skewsymmetric_gauss(matrix N, int number_rows, int number_cols ); computes the gaussian steps in the resolution process.
 RETURN: transformed matrix M
 EXAMPLE: example skewsymmetric_gauss; shows an example
@@ -1961,7 +1877,7 @@ EXAMPLE: example skewsymmetric_gauss; shows an example
 		//TODO
 }
 
-proc symmetric_gauss(matrix N, int number_rows, int number_cols)	//TODO: compute the map of abb
+proc symmetric_gauss(matrix N, int number_rows, int number_cols)	
 "USAGE: symmetric_gauss(matrix N, int number_rows, int number_cols ); computes the gaussian steps in the resolution process.
 RETURN: transformed matrix M
 EXAMPLE: example symmetric_gauss; shows an example
