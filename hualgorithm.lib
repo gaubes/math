@@ -8,11 +8,16 @@ PROCEDURES:
 	HuAlgorithm(M); Hu's centercalculation starting with a matrix M
 	ListForHU(M); converts Matrix with at most locally monomial entries of the form 1-x^A, x into a list
 	HuCalc (L); calculates a sequence of centers in the sence of the Hu algorithm
+	
 	CalculateIntersectionLattice(L); calculates the intersection lattice of L as a list
 	CalculateIntersectionLatticeIdeal(IntersectionLattice[i][j]); calculates the ideal to a corresponding intersection lattice entry
 	
+	allPairwiseTransversal(list L); checks wheather all components of the list L are pairwise transversal
+	
+	
 	deleteEmptyIntersections(SubsetList, EmptySubsetIndices); list S... list E... where we want to delete sublists of S which contains entries of E as sublist
 	removeDuplicates(L); remove duplicate elements from a list L
+	isSubList(list subL, list L); checks wheather subL is a sublist of L 
 ";
 
 LIB "maxord.lib";
@@ -343,7 +348,11 @@ EXAMPLE: example CalculateIntersectionLattice; shows an example
 	CalculateIntersectionLattice(L);
 }
 
-proc allPairwiseTransversal(list L){
+proc allPairwiseTransversal(list L)
+"USAGE: allPairwiseTransversal(list L); 
+RETURN: 1 if all elements of L are pairwise transversal, 0 otherwise
+EXAMPLE: example allPairwiseTransversal; shows an example
+"{
 	int i,j;
 	int sizeL = size(L);
 	int pairwiseTransversal = 1;
@@ -357,6 +366,19 @@ proc allPairwiseTransversal(list L){
 		}
 	}
 	return(pairwiseTransversal);
+}example
+{ "EXAMPLE:"; echo = 2;
+	ring r = 0,(x,y,z),dp;
+	//list L = list(x-1,y-1,xy-1,1,xy-1);
+	//CalculateIntersectionLattice(L);
+	list L;
+	//L = list(x-1,y-1,xy-1,xy);
+	//CalculateIntersectionLattice(L);
+	L = list(x-1,y-1,xy-1);
+	allPairwiseTransversal(L);
+	
+	L = list(x-1,y-1);
+	allPairwiseTransversal(L);
 }
 
 proc CalculateIntersectionLatticeIdeal(list IntersectionLattice)
