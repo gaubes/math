@@ -56,7 +56,7 @@ LIB "matrix.lib";
 //LIB "resolve.lib";
 LIB "hualgorithm.lib";
 LIB "general.lib";	//absValue
-LIB "test_ring.lib"; 			//covering calculation
+LIB "cjs.lib"; 			//covering calculation
 
 LIB "resbinomial_neu.lib"; //only for performancetests
 
