@@ -58,7 +58,7 @@ LIB "hualgorithm.lib";
 LIB "general.lib";	//absValue
 LIB "cjs.lib"; 			//covering calculation
 
-LIB "resbinomial_neu.lib"; //only for performancetests
+LIB "resbinomial2.lib"; //only for performancetests
 
 proc blowUp3(ideal J,ideal C,list #)
 "USAGE:  blowUp3(J,C[,W][,E]);
